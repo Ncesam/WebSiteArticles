@@ -1,15 +1,12 @@
 import {FC, useContext} from "react";
 import {BrowserRouter, Routes} from "react-router-dom";
+import AppRoutes from "./AppRoutes";
 
 
 const App: FC = () => {
-    const context = useContext(Context)
     return (
         <BrowserRouter>
-            <Routes>
-                {}
-                {}
-            </Routes>
+            <AppRoutes/>
         </BrowserRouter>
     )
 }

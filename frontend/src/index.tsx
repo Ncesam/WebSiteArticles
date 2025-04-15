@@ -1,18 +1,20 @@
 import React, {createContext} from "react";
 import ReactDOM from "react-dom/client";
-import {Provider} from "mobx-react";
 import App from "@/App";
+import RootStore from "@/stores/rootStore";
 
-import rootStore from "./stores/rootStore";
-const Context = createContext<rootStore | undefined>();
-const rootElement = document.getElementById("root");
-const root = ReactDOM.createRoot(rootElement);
+const store = new RootStore()
+
+export const Context = createContext<RootStore>(store);
+
+const root = ReactDOM.createRoot(
+  document.getElementById('root') as HTMLElement
+);
+
 
 root.render(
-  <React.StrictMode>
-    <Provider {...rootStore}>
+  <Context.Provider value={store}>
       <App />
-    </Provider>
-  </React.StrictMode>
+  </Context.Provider>
 );
 
