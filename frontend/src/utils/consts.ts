@@ -1,7 +1,7 @@
 export const SETTINGS_ROUTE = "/settings"
 export const DASHBOARD_ROUTE = "/dashboard"
 export const LOGIN_ROUTE = "/login"
-export const REGISTER_ROUTE = "/register"
+export const REGISTER_ROUTE = "/registration"
 export const THEMES_ROUTE = "/themes"
 export const PROMPTS_ROUTE = "/prompts"
 export const ADD_ARTICLE_ROUTE = "/add-article"

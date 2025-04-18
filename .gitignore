@@ -1,6 +1,6 @@
 src/frontent/build
 node_modules
 .idea
-.venv
-__pycache__
+gateway.exe
 .env
+logs.log
