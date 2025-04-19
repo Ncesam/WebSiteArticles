@@ -9,7 +9,7 @@ import (
 func GetUserHandler(logger *zap.Logger, cfg *config.Config, client) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		logger.Debug("Request for GetUser")
-
+		c.
 	}
 
 }

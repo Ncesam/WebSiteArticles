@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package auth;
 
+option go_package = "internal/proto/auth;auth";
+
 message LoginRequest {
   string nickname = 1;
   string password = 2;

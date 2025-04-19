@@ -4,3 +4,4 @@ node_modules
 gateway.exe
 .env
 logs.log
+*.pb.go
