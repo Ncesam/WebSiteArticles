@@ -12,8 +12,12 @@ message RegisterRequest {
   string email = 1;
   string nickname = 2;
   string password = 3;
+  bool IsAdmin = 4;
 }
 message GetMeRequest {
+  string refreshToken = 1;
+}
+message RefreshRequest {
   string refreshToken = 1;
 }
 message AuthResponse {
@@ -26,5 +30,6 @@ message AuthResponse {
 service AuthService {
   rpc Login(LoginRequest) returns (AuthResponse);
   rpc Register(RegisterRequest) returns (AuthResponse);
+  rpc Refresh(RefreshRequest) returns (AuthResponse);
   rpc Me(GetMeRequest) returns (AuthResponse);
 }

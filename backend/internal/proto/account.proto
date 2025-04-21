@@ -1,0 +1,6 @@
+message Account {
+    string Id = 1;
+    string Nickname = 2;
+    string Email = 3;
+    string
+}
