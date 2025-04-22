@@ -1,0 +1,34 @@
+syntax = "proto3";
+package queue;
+
+import "google/protobuf/empty.proto";
+
+option go_package = "generated/proto/queue;queue";
+
+message Queue {
+  int32 Id = 1;
+  int32 UserId = 2;
+  int32 Priority = 3;
+}
+
+message AddQueueRequest {
+  int32 UserId = 1;
+  int32 Priority = 2;
+}
+
+message ListQueueRequest { int32 UserId = 1; }
+
+message ListQueueResponse { repeated Queue Queues = 1; }
+
+message ViewQueueRequest { int32 Id = 1; }
+
+message ViewQueueResponse { int32 Id = 1; }
+
+message DelQueueRequest { int32 Id = 1; }
+
+service QueueService {
+  rpc AddQueue(AddQueueRequest) returns (google.protobuf.Empty);
+  rpc ListQueue(ListQueueRequest) returns (ListQueueResponse);
+  rpc ViewQueue(ViewQueueRequest) returns (ViewQueueResponse);
+  rpc DelQueue(DelQueueRequest) returns (google.protobuf.Empty);
+}

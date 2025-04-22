@@ -2,11 +2,9 @@ syntax = "proto3";
 
 package user;
 
-option go_package = "internal/proto/user;user";
+option go_package = "generated/proto/user;user";
 
-message Response {
-  int32 status = 1;
-}
+message Response { int32 status = 1; }
 
 message AddUserRequest {
   string email = 1;
@@ -15,9 +13,7 @@ message AddUserRequest {
   bool isAdmin = 4;
 }
 
-message GetUserRequest {
-  string nickname = 1;
-}
+message GetUserRequest { string nickname = 1; }
 
 message UpdateUserRequest {
   int32 id = 1;
@@ -27,9 +23,7 @@ message UpdateUserRequest {
   bool isAdmin = 5;
 }
 
-message DeleteUserRequest {
-  int32 id = 1;
-}
+message DeleteUserRequest { int32 id = 1; }
 
 message User {
   int32 id = 1;

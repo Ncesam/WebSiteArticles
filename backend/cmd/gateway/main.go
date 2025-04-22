@@ -24,7 +24,7 @@ import (
 // @termsOfService  http://swagger.io/terms/
 
 // @host      localhost:8080
-// @BasePath  /api/v1
+// @BasePath  /
 
 // @schemes http https
 func main() {
@@ -49,8 +49,7 @@ func main() {
 	validator.RegisterMyHandlers(loggerInstanse)
 
 	app := gin.New()
-
-	app.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	app.GET("/swagger/*any",ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	app.Use(logger.MiddleWare(loggerInstanse, 30, time.Minute))
 	clients, err := gateway.GetAllClients(loggerInstanse, cfg)

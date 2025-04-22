@@ -2,7 +2,7 @@ package routers
 
 import (
 	"backend/internal/helpers"
-	authPb "backend/internal/proto/auth"
+	authPb "backend/generated/proto/auth"
 	"backend/pkg/config"
 	jwt "backend/pkg/security/JWT"
 	"backend/pkg/types"

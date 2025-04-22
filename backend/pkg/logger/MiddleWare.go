@@ -1,11 +1,12 @@
 package logger
 
 import (
-	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 type RequestCounter struct {
@@ -49,7 +50,11 @@ func MiddleWare(logger *zap.Logger, maxRequests int, timeWindow time.Duration) g
 			return
 		}
 		c.Next()
-
+		if len(c.Errors) > 0 {
+			for _, err := range c.Errors {
+				logger.Error("GIN error", zap.Error(err))
+			}
+		}
 	}
 
 }

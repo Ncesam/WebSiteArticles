@@ -2,12 +2,11 @@ package routers
 
 import (
 	"backend/internal/helpers"
-	articlePb "backend/internal/proto/article"
-	"backend/pkg/errors"
-	"backend/pkg/types"
-
+	articlePb "backend/generated/proto/article"
 	"backend/pkg/config"
-	"backend/pkg/security/JWT"
+	"backend/pkg/errors"
+	jwt "backend/pkg/security/JWT"
+	"backend/pkg/types"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -25,8 +24,8 @@ import (
 // @Failure      400 {object} map[string]string
 // @Failure      403 {object} map[string]string
 // @Failure      500 {object} map[string]string
-// @Router       /articles/add [post]
-func AddArticleHandler(logger *zap.Logger, cfg *config.Config, clients *types.MapClients, authController *JWT.AuthController) gin.HandlerFunc {
+// @Router       /articles/ [post]
+func AddArticleHandler(logger *zap.Logger, cfg *config.Config, clients *types.MapClients, authController *jwt.AuthController) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req types.AddArticleForm
 
@@ -48,7 +47,7 @@ func AddArticleHandler(logger *zap.Logger, cfg *config.Config, clients *types.Ma
 
 		_, err := clients.Article.Service.AddArticle(clients.Article.Ctx, article)
 		if err != nil {
-			helpers.HandleGrpcError(c, logger, err, "Failed to add article")
+			helpers.HandleGrpcError(logger, c, err, "Failed to add article")
 			return
 		}
 
@@ -61,17 +60,21 @@ func AddArticleHandler(logger *zap.Logger, cfg *config.Config, clients *types.Ma
 // @Description  Все пользователи могут получить список статей
 // @Tags         article
 // @Produce      json
-// @Success      200 {array} articlePb.Article
+// @Success      200 {array} articlePb.ListArticlesResponse
 // @Failure      500 {object} map[string]string
-// @Router       /articles/list [get]
-func ListArticlesHandler(logger *zap.Logger, cfg *config.Config, clients *types.MapClients) gin.HandlerFunc {
+// @Router       /articles/ [get]
+func ListArticlesHandler(logger *zap.Logger, cfg *config.Config, clients *types.MapClients, authController *jwt.AuthController) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		_, ok := helpers.CheckUser(logger, c, authController)
+		if !ok {
+			return
+		}
 		resp, err := clients.Article.Service.ListArticles(clients.Article.Ctx, &articlePb.ListArticlesRequest{})
 		if err != nil {
-			helpers.HandleGrpcError(c, logger, err, "Failed to list articles")
+			helpers.HandleGrpcError(logger, c, err, "Failed to list articles")
 			return
 		}
 
-		c.JSON(200, resp.Articles)
+		c.JSON(200, resp)
 	}
 }

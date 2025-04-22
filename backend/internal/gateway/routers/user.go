@@ -2,7 +2,7 @@ package routers
 
 import (
 	"backend/internal/helpers"
-	userPb "backend/internal/proto/user"
+	userPb "backend/generated/proto/user"
 	"backend/pkg/config"
 	"backend/pkg/errors"
 

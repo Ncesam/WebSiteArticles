@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package auth;
 
-option go_package = "internal/proto/auth;auth";
+option go_package = "generated/proto/auth;auth";
 
 message LoginRequest {
   string nickname = 1;
@@ -14,12 +14,8 @@ message RegisterRequest {
   string password = 3;
   bool IsAdmin = 4;
 }
-message GetMeRequest {
-  string refreshToken = 1;
-}
-message RefreshRequest {
-  string refreshToken = 1;
-}
+message GetMeRequest { string refreshToken = 1; }
+message RefreshRequest { string refreshToken = 1; }
 message AuthResponse {
   int32 status = 1;
   string accessToken = 2;

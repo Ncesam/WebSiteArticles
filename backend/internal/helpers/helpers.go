@@ -67,7 +67,7 @@ func CheckUser(logger *zap.Logger, c *gin.Context, authController *jwt.AuthContr
 }
 
 func ParseIDParam(logger *zap.Logger, c *gin.Context, paramName string) (int32, bool) {
-	idStr := c.Param(paramName)
+	idStr := c.Query(paramName)
 	if idStr == "" {
 		logger.Warn("Missing ID param", zap.String("param", paramName))
 		c.AbortWithStatusJSON(errors.ErrBadRequest.Code, gin.H{"message": paramName + " is required"})

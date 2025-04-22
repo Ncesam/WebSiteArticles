@@ -1,8 +1,11 @@
 package gateway
 
 import (
-	authPb "backend/internal/proto/auth"
-	userPb "backend/internal/proto/user"
+	accountPb "backend/generated/proto/account"
+	articlePb "backend/generated/proto/article"
+	authPb "backend/generated/proto/auth"
+	userPb "backend/generated/proto/user"
+	queuePb "backend/generated/proto/queue"
 	"backend/pkg/config"
 	grpcfactory "backend/pkg/grpcFactory"
 	"backend/pkg/types"
@@ -21,8 +24,26 @@ func GetAllClients(logger *zap.Logger, cfg *config.Config) (*types.MapClients, e
 		logger.Error("Auth Service isn't ready", zap.Error(err))
 		return nil, err
 	}
+	article, err := grpcfactory.NewClient[articlePb.ArticleServiceClient]("article_service:50003", logger, cfg, articlePb.NewArticleServiceClient)
+	if err != nil {
+		logger.Error("Article Service isn't ready", zap.Error(err))
+		return nil, err
+	}
+	account, err := grpcfactory.NewClient[accountPb.AccountServiceClient]("account_service:50004", logger, cfg, accountPb.NewAccountServiceClient)
+	if err != nil {
+		logger.Error("Account Service isn't ready", zap.Error(err))
+		return nil, err
+	}
+	queue, err := grpcfactory.NewClient[queuePb.QueueServiceClient]("queue_service:50005", logger, cfg, queuePb.NewQueueServiceClient)
+	if err != nil {
+		logger.Error("Queue Service isn't ready", zap.Error(err))
+		return nil, err
+	}
 	return &types.MapClients{
-		User: user,
-		Auth: auth,
+		User:    user,
+		Auth:    auth,
+		Article: article,
+		Account: account,
+		Queue: queue,
 	}, nil
 }
