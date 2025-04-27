@@ -9,21 +9,21 @@ import {authRoutes, primaryRoutes} from "./routes";
 const AppRoutes: FC = () => {
     const context: RootStore = useStore()
     return (
-        <Suspense>
+        <Suspense fallback={<div></div>}>
             <Routes>
-                {!context.userStore.IsAuth ? (
+                {context.userStore.IsAuth ? (
                     <>
                         {authRoutes.map(({path, component}) => (
                             <Route key={path} path={path} element={React.createElement(component)}/>
                         ))}
-                        <Route path="*" element={<Navigate to={LOGIN_ROUTE} replace/>}/>
+                        <Route path="*" element={<Navigate to={LOGIN_ROUTE}/>}/>
                     </>
                 ) : (
                     <>
                         {primaryRoutes.map(({path, component}) => (
                             <Route key={path} path={path} element={React.createElement(component)}/>
                         ))}
-                        <Route path="*" element={<Navigate to={DASHBOARD_ROUTE} replace/>}/>
+                        <Route path="*" element={<Navigate to={DASHBOARD_ROUTE}/>}/>
                     </>
                 )}
             </Routes>

@@ -9,7 +9,6 @@ const Button: FC<ButtonProps> = ({styleType, onClick, loading = false, disabled 
     useEffect(() => {
         setIsDisabled(disabled || loading);
     }, [disabled, loading]);
-    console.log(children);
     return (
         <button
             disabled={isDisabled}

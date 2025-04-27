@@ -7,3 +7,15 @@ body {
     background-color: #A7B8B5;
     font-family: 'Onest', sans-serif;
 }
+
+
+.ce-paragraph::after {
+    color: #267491 !important;
+    opacity: 0.7 !important;
+}
+
+/* Стиль для плейсхолдера заголовка */
+.ce-header::after {
+    color: #082D3A !important;
+    font-weight: bold !important;
+}

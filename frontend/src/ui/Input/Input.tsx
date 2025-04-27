@@ -1,19 +1,19 @@
 import React from "react";
-import type {FC} from "react";
-import {InputProps} from "./Input.props";
-import {clsx} from "clsx";
+import type { FC } from "react";
+import { InputProps } from "./Input.props";
+import { clsx } from "clsx";
 
 const Input: FC<InputProps> = ({
-                                   style,
-                                   Icon,
-                                   onChange,
-                                   placeholder,
-                                   type = "text",
-                                   value,
-                                   helperText,
-                                   error,
-                                   disabled
-                               }) => {
+    style,
+    Icon,
+    onChange,
+    placeholder,
+    type = "text",
+    value,
+    helperText,
+    error,
+    disabled
+}) => {
     return (
         <div className={"flex flex-col w-full gap-1"}>
             <div className={
@@ -28,8 +28,8 @@ const Input: FC<InputProps> = ({
                             !disabled && !error,
                     })
             }>
-                {Icon && <Icon className={"text-base-grayBlue w-4 h-4 mr-2"}/>}
-                <input type={type} className={style} onChange={onChange} placeholder={placeholder} value={value}/>
+                {Icon && <Icon className={"text-base-grayBlue w-4 h-4 mr-2"} />}
+                <input type={type} className={style} onChange={onChange} placeholder={placeholder} value={value} />
             </div>
 
             {helperText && (

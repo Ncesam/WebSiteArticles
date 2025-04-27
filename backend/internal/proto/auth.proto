@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package auth;
 
-option go_package = "generated/proto/auth;auth";
+option go_package = "generated/proto/auth;authpb";
 
 message LoginRequest {
   string nickname = 1;

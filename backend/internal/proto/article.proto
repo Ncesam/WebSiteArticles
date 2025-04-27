@@ -5,7 +5,7 @@ package article;
 import "google/protobuf/empty.proto";
 import "account.proto";
 
-option go_package = "generated/proto/article;article";
+option go_package = "generated/proto/article;articlepb";
 
 message AddArticleRequest {
   string title = 1;

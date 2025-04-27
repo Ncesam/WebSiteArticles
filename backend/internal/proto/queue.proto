@@ -1,9 +1,10 @@
 syntax = "proto3";
+
 package queue;
 
 import "google/protobuf/empty.proto";
 
-option go_package = "generated/proto/queue;queue";
+option go_package = "generated/proto/queue;queuepb";
 
 message Queue {
   int32 Id = 1;

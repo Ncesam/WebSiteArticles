@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package user;
 
-option go_package = "generated/proto/user;user";
+option go_package = "generated/proto/user;userpb";
 
 message Response { int32 status = 1; }
 

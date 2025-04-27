@@ -4,7 +4,7 @@ package account;
 
 import "google/protobuf/empty.proto";
 
-option go_package = "generated/proto/account;account";
+option go_package = "generated/proto/account;accountpb";
 
 message Account {
   int32 Id = 1;

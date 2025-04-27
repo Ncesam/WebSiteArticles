@@ -7,12 +7,12 @@ const Card: FC<CardProps> = ({style = "default", title, subtitle, children}) => 
     return (
         <div
             className={clsx(
-                "rounded-2xl p-6 bg-base-darkBlue text-white shadow-md transition hover:shadow-lg",
+                "rounded-2xl p-6 bg-base-lightBlue/75 text-white shadow-md transition duration-300 delay-100 ease-in hover:shadow-lg hover:shadow-base-darkBlue",
                 styleMap[style]
             )}
         >
             {title && (
-                <h2 className="text-lg font-semibold text-base-lightBlue mb-1 animate-fade-in">
+                <h2 className="text-lg font-semibold text-base-darkBlue mb-1 animate-fade-in">
                     {title}
                 </h2>
             )}

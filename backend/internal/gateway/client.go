@@ -6,6 +6,11 @@ import (
 	authPb "backend/generated/proto/auth"
 	userPb "backend/generated/proto/user"
 	queuePb "backend/generated/proto/queue"
+	themePb "backend/generated/proto/theme"
+	promptPb "backend/generated/proto/prompt"
+	generatorPb "backend/generated/proto/generator"
+	partnerPb "backend/generated/proto/partner"
+
 	"backend/pkg/config"
 	grpcfactory "backend/pkg/grpcFactory"
 	"backend/pkg/types"
@@ -39,11 +44,36 @@ func GetAllClients(logger *zap.Logger, cfg *config.Config) (*types.MapClients, e
 		logger.Error("Queue Service isn't ready", zap.Error(err))
 		return nil, err
 	}
+	theme, err := grpcfactory.NewClient[themePb.ThemeServiceClient]("theme_service:50006", logger, cfg, themePb.NewThemeServiceClient)
+	if err != nil {
+		logger.Error("Theme Service isn't ready", zap.Error(err))
+		return nil, err
+	}
+	prompt, err := grpcfactory.NewClient[promptPb.PromptServiceClient]("prompt_service:50007", logger, cfg, promptPb.NewPromptServiceClient)
+	if err != nil {
+		logger.Error("Prompt Service isn't ready", zap.Error(err))
+		return nil, err
+	}
+	generator, err := grpcfactory.NewClient[generatorPb.GeneratorServiceClient]("generator_service:50008", logger, cfg, generatorPb.NewGeneratorServiceClient)
+	if err != nil {
+		logger.Error("Generator Service isn't ready", zap.Error(err))
+		return nil, err
+	}
+	partner, err := grpcfactory.NewClient[partnerPb.PartnerServiceClient]("partner_service:50009", logger, cfg, partnerPb.NewPartnerServiceClient)
+	if err != nil {
+		logger.Error("Partner Service isn't ready", zap.Error(err))
+		return nil, err
+	}
+
 	return &types.MapClients{
-		User:    user,
-		Auth:    auth,
-		Article: article,
-		Account: account,
-		Queue: queue,
+		User:      user,
+		Auth:      auth,
+		Article:   article,
+		Account:   account,
+		Queue:     queue,
+		Theme:     theme,
+		Prompt:    prompt,
+		Generator: generator,
+		Partner:   partner,
 	}, nil
 }

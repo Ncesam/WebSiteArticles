@@ -59,3 +59,5 @@ func registerQueueRouters(router *gin.Engine, logger *zap.Logger, clients *types
 	queueGroup.DELETE("/", routers.DeleteQueueHandler(logger, cfg, clients, authController))
 	logger.Info("Queue routes registered")
 }
+
+
