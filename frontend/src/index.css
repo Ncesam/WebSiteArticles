@@ -8,14 +8,53 @@ body {
     font-family: 'Onest', sans-serif;
 }
 
-
-.ce-paragraph::after {
-    color: #267491 !important;
-    opacity: 0.7 !important;
+.ce-popover--opened>.ce-popover__container {
+    background-color: #082D3A;
+    border: 0;
+    animation: slide-on-bottom;
+    animation-duration: 100ms;
+    animation-timing-function: ease-in;
 }
 
-/* Стиль для плейсхолдера заголовка */
-.ce-header::after {
-    color: #082D3A !important;
-    font-weight: bold !important;
+.ce-popover__items::-webkit-scrollbar-track {
+    border-radius: 99px;
+    background-color: #082D3A;
+}
+
+.ce-popover__items::-webkit-scrollbar {
+    width: 5px;
+    background-color: #082D3A;
+}
+
+.ce-popover__items::-webkit-scrollbar-thumb {
+    border-radius: 99px;
+    background-color: #267491;
+}
+
+.ce-inline-tool,
+.ce-popover-item {
+    color: #A7B8B5;
+}
+
+.cdx-search-field__input, .cdx-search-field__input::placeholder, .ce-inline-tool-input, .ce-inline-tool-input::placeholder {
+    color: #082D3A;
+    font-weight: bold;
+}
+
+.ce-inline-tool:hover,
+.ce-popover-item:hover {
+    background-color: #267491;
+    color: #267491;
+}
+
+
+
+@keyframes slide-on-bottom {
+    from {
+        transform: translateY(40%);
+    }
+
+    to {
+        transform: translateY(0);
+    }
 }

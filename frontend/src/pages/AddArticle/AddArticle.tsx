@@ -10,7 +10,7 @@ const AddArticle: FC = () => {
     return (
         <div className={"w-1/2"}>
             <Card title="Статья">
-                ...
+                <Editor onChange={() => console.log()}></Editor>
             </Card>
         </div>
     )

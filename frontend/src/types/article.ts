@@ -14,3 +14,12 @@ export interface Block {
     type: string,
     number: number
 }
+
+export interface BotConfig {
+    label: string,
+    id: number,
+    userId: number,
+    themeId: number,
+    promptId: number,
+    delay: number,
+}

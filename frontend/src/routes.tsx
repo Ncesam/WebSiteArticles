@@ -2,6 +2,7 @@ import {lazy} from "react";
 import {ADD_ARTICLE_ROUTE, DASHBOARD_ROUTE, LOGIN_ROUTE, REGISTER_ROUTE, SETTINGS_ROUTE} from "./utils/consts";
 import DashBoard from "./pages/DashBoard/DashBoard";
 import AddArticle from "./pages/AddArticle/AddArticle";
+import Settings from "./pages/Settings/Settings";
 
 const Registration = lazy(() => import("@/pages/Registration/Registration"));
 const Login = lazy(() => import("@/pages/Login/Login"))
@@ -17,10 +18,10 @@ export const authRoutes = [
     },
 ]
 export const primaryRoutes = [
-    // {
-    //     path: SETTINGS_ROUTE,
-    //     component: Settings
-    // },
+    {
+        path: SETTINGS_ROUTE,
+        component: Settings
+    },
     {
         path: ADD_ARTICLE_ROUTE,
         component: AddArticle

@@ -12,21 +12,31 @@ import { EditorFormProps } from './Editor.props'
 
 
 const Editor: FC<EditorFormProps> = ({onChange}) => {
-    const ref = useRef<EditorJS | null>(null);
+    const editor = useRef<EditorJS | null>(null);
     useEffect(() => {
-        if (!ref.current) {
+        if (!editor.current) {
             const editor = new EditorJS({
+                autofocus: true,
                 holder: "editorjs",
                 onReady: () => {
                     console.log("Editor.js is ready");
+                    editor.blocks.insert("header", {
+                      placeholder: "Заголовок",
+                    }, {}, 0)
+                    editor.blocks.insert("paragraph", {
+                      placeholder: "Введите подзаголовок...",
+                    }, {}, 1);
                   },
                 async onChange(api, event) {
                     const data = await api.saver.save()
-                    onChange(data)
+                    // onChange(data)
                 },
                 tools: {
                     paragraph: {
                         class: Paragraph as ToolConstructable,
+                        config: {
+                          placeholder: "Человек паук хороший герой"
+                        }
                     },
                     underline: UnderLine,
                     header: {
@@ -60,13 +70,15 @@ const Editor: FC<EditorFormProps> = ({onChange}) => {
             })
         }
         return () => {
-            if (ref.current && ref.current.destroy) {
-                ref.current.destroy()
+            if (editor.current && editor.current.destroy) {
+                editor.current.destroy()
             }
         }
     }, [])
   return (
-    <div id={"editorjs"} className="bg-base-lightBlue/30 rounded-lg max-w-3xl mx-auto my-8">
+    <div className={"bg-white/50 p-4 text-base-darkBlue rounded-lg max-w-3xl mx-auto my-8"}>
+      <div id={"title"}></div>
+      <div id={"editorjs"}></div>
     </div>
   )
 }
