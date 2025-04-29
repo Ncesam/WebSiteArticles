@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package request;
+
+option go_package = "generated/proto/request;request";
+
+message sendArticleRequest {
+  int64 ConfigId = 1;
+  string Title = 2;
+  repeated string Blocks = 3;
+}
+message Empty {}
+service RequestService {
+  rpc SendArticle(sendArticleRequest) returns (Empty);
+}

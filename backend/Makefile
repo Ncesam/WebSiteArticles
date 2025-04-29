@@ -1,8 +1,10 @@
 # ========== CONFIG ==========
-APP_NAME=gateway
+GATEWAY_NAME=gateway
+AUTH_NAME=auth_service
 BIN_DIR=bin
 PROTO_DIR=./internal/proto
-MAIN_PATH=cmd/gateway/main.go
+GATEWAY_PATH=cmd/gateway/main.go
+AUTH_PATH=cmd/auth/main.go
 DOCS_DIR=docs
 SWAG_OUT=./$(DOCS_DIR)
 
@@ -15,12 +17,12 @@ all: tidy proto swag build
 
 ## Генерация protobuf файлов
 proto:
-	protoc -I=${PROTO_DIR} --go_out=. --go-grpc_out=. ${PROTO_DIR}/*.proto
+	protoc -I ./internal/proto --go_out=. --go-grpc_out=. ./internal/proto/*.proto
 
 ## Сборка приложения
 build:
-	go build -o $(BIN_DIR)/$(APP_NAME) $(MAIN_PATH)
-
+	go build -o $(BIN_DIR)/$(GATEWAY_NAME) $(GATEWAY_PATH)
+	go build -o $(BIN_DIR)/$(AUTH_NAME) $(AUTH_PATH)
 ## Запуск приложения
 run: build
 	./$(BIN_DIR)/$(APP_NAME)
@@ -48,7 +50,4 @@ lint:
 test:
 	go test ./... -v
 
-## Просмотр переменных окружения
-env:
-	@echo "APP_HOST: $(APP_HOST)"
-	@echo "APP_PORT: $(APP_PORT)"
+

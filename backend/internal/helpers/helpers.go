@@ -66,7 +66,7 @@ func CheckUser(logger *zap.Logger, c *gin.Context, authController *jwt.AuthContr
 	return claims, true
 }
 
-func ParseIDParam(logger *zap.Logger, c *gin.Context, paramName string) (int32, bool) {
+func ParseIDParam(logger *zap.Logger, c *gin.Context, paramName string) (int64, bool) {
 	idStr := c.Query(paramName)
 	if idStr == "" {
 		logger.Warn("Missing ID param", zap.String("param", paramName))
@@ -81,10 +81,10 @@ func ParseIDParam(logger *zap.Logger, c *gin.Context, paramName string) (int32, 
 		return 0, false
 	}
 
-	return int32(idInt), true
+	return int64(idInt), true
 }
 
-func ExtractUserIDFromClaims(logger *zap.Logger, c *gin.Context, claims map[string]interface{}) (int32, bool) {
+func ExtractUserIDFromClaims(logger *zap.Logger, c *gin.Context, claims map[string]interface{}) (int64, bool) {
 	subRaw, exists := claims["sub"]
 	if !exists {
 		logger.Warn("sub claim not found in token")
@@ -111,7 +111,7 @@ func ExtractUserIDFromClaims(logger *zap.Logger, c *gin.Context, claims map[stri
 		return 0, false
 	}
 
-	return int32(idInt), true
+	return int64(idInt), true
 }
 
 func HandleGrpcError(logger *zap.Logger, c *gin.Context, err error, fallbackMessage string) {
@@ -128,15 +128,15 @@ func HandleGrpcError(logger *zap.Logger, c *gin.Context, err error, fallbackMess
 	}
 }
 
-func StringToInt32(logger *zap.Logger, s string) (int32, error) {
-	i64, err := strconv.ParseInt(s, 10, 32)
+func StringToInt64(logger *zap.Logger, s string) (int64, error) {
+	i64, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
-		logger.Error("Failed to convert string to int32", zap.String("input", s), zap.Error(err))
+		logger.Error("Failed to convert string to int64", zap.String("input", s), zap.Error(err))
 	}
-	return int32(i64), err
+	return i64, err
 }
 
-func Int32ToString(i int32) string {
+func Int64ToString(i int64) string {
 	return strconv.Itoa(int(i))
 }
 

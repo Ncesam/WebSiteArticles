@@ -12,19 +12,31 @@ type Config struct {
 	POSTGRES struct {
 		PORT     int    `env:"POSTGRES_PORT" env-default:"5432" env-description:"Порт базы данных"`
 		HOST     string `env:"POSTGRES_HOST" env-default:"postgres" env-description:"Хост базы"`
-		USER     string `env:"POSTGRES_USER" env-required:"true" env-description:"Пользователь базы"`
+		USERNAME string `env:"POSTGRES_USER" env-required:"true" env-description:"Пользователь базы"`
 		PASSWORD string `env:"POSTGRES_PASSWORD" env-required:"true" env-description:"Пароль от базы"`
 		DATABASE string `env:"POSTGRES_DATABASE" env-required:"true" env-description:"Имя базы данных"`
+	}
+	MONGO struct {
+		PORT     int    `env:"MONGO_PORT" env-default:"27017" env-description:"Порт MongoDB"`
+		HOST     string `env:"MONGO_HOST" env-default:"mongo" env-description:"Хост MongoDB"`
+		USERNAME string `env:"MONGO_USER" env-description:"Пользователь MongoDB (опционально)"`
+		PASSWORD string `env:"MONGO_PASSWORD" env-description:"Пароль MongoDB (опционально)"`
+		DATABASE string `env:"MONGO_DATABASE" env-default:"admin" env-description:"Имя базы данных MongoDB"`
 	}
 
 	AUTH struct {
 		ACCESS struct {
+			DURATION  int    `env:"AUTH_ACCESS_DURATION" env-required:"true" env-description:"Время жизни токена"`
 			KEY       string `env:"AUTH_ACCESS_KEY" env-required:"true" env-description:"Секрет для access-токенов"`
 			ALGORITHM string `env:"AUTH_ACCESS_ALGO" env-default:"HS256" env-description:"Алгоритм шифрования access-токена"`
 		}
 		REFRESH struct {
+			DURATION  int    `env:"AUTH_REFRESH_DURATION" env-required:"true" env-description:"Время жизни токена"`
 			KEY       string `env:"AUTH_REFRESH_KEY" env-required:"true" env-description:"Секрет для refresh-токенов"`
 			ALGORITHM string `env:"AUTH_REFRESH_ALGO" env-default:"HS256" env-description:"Алгоритм шифрования refresh-токена"`
 		}
+	}
+	AUTH_SERVICE struct {
+		ADDRESS string `env:"AUTH_SERVICE_ADDRESS" env-required:"true" env-description:"Адресс микросервиса"`
 	}
 }

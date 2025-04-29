@@ -11,6 +11,7 @@ import (
 )
 
 type AccessToken = string
+type RefreshToken = string
 
 type AuthController struct {
 	logger *zap.Logger
@@ -22,13 +23,12 @@ func New(logger *zap.Logger, cfg *config.Config) AuthController {
 		logger: logger, cfg: cfg,
 	}
 }
-func (controller AuthController) CreateAccessToken(user types.UserInfo, duration time.Duration) (AccessToken, error) {
+func (controller AuthController) CreateAccessToken(user types.UserInfo) (AccessToken, error) {
 	claims := jwt.MapClaims{
 		"nickname": user.Nickname,
 		"email":    user.Email,
 		"sub":      user.Id,
-		"role":     user.IsAdmin,
-		"exp":      time.Now().Add(duration).Unix(),
+		"exp":      time.Now().Add(time.Duration(controller.cfg.AUTH.ACCESS.DURATION)).Unix(),
 		"iat":      time.Now().Unix(),
 	}
 	controller.logger.Debug("Create New JWT")
@@ -75,4 +75,24 @@ func (controller AuthController) Decrypt(accessToken AccessToken) (jwt.MapClaims
 	}
 
 	return claims, nil
+}
+
+func (controller AuthController) CreateRefreshToken(user types.UserInfo) (RefreshToken, error) {
+	claims := jwt.MapClaims{
+		"nickname": user.Nickname,
+		"email":    user.Email,
+		"sub":      user.Id,
+		"exp":      time.Now().Add(time.Duration(controller.cfg.AUTH.REFRESH.DURATION)).Unix(),
+		"iat":      time.Now().Unix(),
+	}
+	controller.logger.Debug("Create New JWT")
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	signed, err := token.SignedString(controller.cfg.AUTH.REFRESH.KEY)
+	if err != nil {
+		controller.logger.Error("Error in crypting token")
+		return "", err
+	}
+
+	return RefreshToken(signed), nil
 }

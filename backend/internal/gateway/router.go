@@ -13,8 +13,6 @@ import (
 func RegisterAllRouters(router *gin.Engine, logger *zap.Logger, clients *types.MapClients, cfg *config.Config, authController *jwt.AuthController) {
 	registerUserRouters(router, logger, clients, cfg, authController)
 	registerAuthRouters(router, logger, clients, cfg, authController)
-	registerArticleRouters(router, logger, clients, cfg, authController)
-	registerAccountRouters(router, logger, clients, cfg, authController)
 	registerQueueRouters(router, logger, clients, cfg, authController)
 }
 
@@ -36,21 +34,6 @@ func registerAuthRouters(router *gin.Engine, logger *zap.Logger, clients *types.
 	logger.Info("Auth routes registered")
 }
 
-func registerArticleRouters(router *gin.Engine, logger *zap.Logger, clients *types.MapClients, cfg *config.Config, authController *jwt.AuthController) {
-	articleGroup := router.Group("/articles")
-	articleGroup.POST("/", routers.AddArticleHandler(logger, cfg, clients, authController))
-	articleGroup.GET("/", routers.ListArticlesHandler(logger, cfg, clients, authController))
-	logger.Info("Article routes registered")
-}
-
-func registerAccountRouters(router *gin.Engine, logger *zap.Logger, clients *types.MapClients, cfg *config.Config, authController *jwt.AuthController) {
-	accountGroup := router.Group("/account")
-	accountGroup.POST("/", routers.AddAccountHandler(logger, cfg, clients, authController))
-	accountGroup.GET("/", routers.ListAccountsHandler(logger, cfg, clients, authController))
-	accountGroup.DELETE("/", routers.DeleteAccountHandler(logger, cfg, clients, authController))
-	logger.Info("Account routes registered")
-}
-
 func registerQueueRouters(router *gin.Engine, logger *zap.Logger, clients *types.MapClients, cfg *config.Config, authController *jwt.AuthController) {
 	queueGroup := router.Group("/queue")
 	queueGroup.POST("/", routers.AddQueueHandler(logger, cfg, clients, authController))
@@ -59,5 +42,3 @@ func registerQueueRouters(router *gin.Engine, logger *zap.Logger, clients *types
 	queueGroup.DELETE("/", routers.DeleteQueueHandler(logger, cfg, clients, authController))
 	logger.Info("Queue routes registered")
 }
-
-

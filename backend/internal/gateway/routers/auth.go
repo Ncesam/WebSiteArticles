@@ -1,8 +1,8 @@
 package routers
 
 import (
-	"backend/internal/helpers"
 	authPb "backend/generated/proto/auth"
+	"backend/internal/helpers"
 	"backend/pkg/config"
 	jwt "backend/pkg/security/JWT"
 	"backend/pkg/types"
@@ -34,7 +34,6 @@ func Register(logger *zap.Logger, cfg *config.Config, clients *types.MapClients)
 			Email:    form.Email,
 			Nickname: form.Nickname,
 			Password: form.Password,
-			IsAdmin:  form.IsAdmin,
 		}
 
 		_, err := clients.Auth.Service.Register(clients.Auth.Ctx, registerRequest)

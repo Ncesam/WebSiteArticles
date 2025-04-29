@@ -1,8 +1,8 @@
 package routers
 
 import (
-	"backend/internal/helpers"
 	userPb "backend/generated/proto/user"
+	"backend/internal/helpers"
 	"backend/pkg/config"
 	"backend/pkg/errors"
 
@@ -34,15 +34,10 @@ func AddUserHandler(logger *zap.Logger, cfg *config.Config, clients *types.MapCl
 			return
 		}
 
-		if !helpers.IsAdmin(logger, c, authController) {
-			return
-		}
-
 		addUserRequest := &userPb.AddUserRequest{
 			Email:    schema.Email,
 			Nickname: schema.Nickname,
 			Password: schema.Password,
-			IsAdmin:  schema.IsAdmin,
 		}
 
 		_, err := clients.User.Service.AddUser(clients.User.Ctx, addUserRequest)
@@ -71,29 +66,19 @@ func GetUserHandler(logger *zap.Logger, cfg *config.Config, clients *types.MapCl
 	return func(c *gin.Context) {
 		var nickname string
 
-		// Если админ — можно передать никнейм в query
-		if helpers.IsAdmin(logger, c, authController) {
-			nickname = c.Query("nickname")
-			if nickname == "" {
-				c.AbortWithStatusJSON(errors.ErrBadRequest.Code, gin.H{"message": "nickname is required"})
-				return
-			}
-		} else {
-			// Обычный пользователь — берем из токена
-			claims, ok := helpers.CheckUser(logger, c, authController)
-			if !ok {
-				return
-			}
-			nicknameRaw, exists := claims["nickname"]
-			if !exists {
-				c.AbortWithStatusJSON(errors.ErrInvalidToken.Code, gin.H{"message": "nickname not found in token"})
-				return
-			}
-			nickname, ok = nicknameRaw.(string)
-			if !ok {
-				c.AbortWithStatusJSON(errors.ErrInvalidToken.Code, gin.H{"message": "invalid nickname format"})
-				return
-			}
+		claims, ok := helpers.CheckUser(logger, c, authController)
+		if !ok {
+			return
+		}
+		nicknameRaw, exists := claims["nickname"]
+		if !exists {
+			c.AbortWithStatusJSON(errors.ErrInvalidToken.Code, gin.H{"message": "nickname not found in token"})
+			return
+		}
+		nickname, ok = nicknameRaw.(string)
+		if !ok {
+			c.AbortWithStatusJSON(errors.ErrInvalidToken.Code, gin.H{"message": "invalid nickname format"})
+			return
 		}
 
 		getUserRequest := &userPb.GetUserRequest{Nickname: nickname}
@@ -129,27 +114,25 @@ func UpdateUserHandler(logger *zap.Logger, cfg *config.Config, clients *types.Ma
 			c.AbortWithStatusJSON(errors.ErrValidationFailed.Code, gin.H{"message": "Invalid update payload"})
 			return
 		}
-		rawId, err := helpers.StringToInt32(logger, schema.Id)
+		rawId, err := helpers.StringToInt64(logger, schema.Id)
 
 		if err != nil {
 			c.AbortWithStatusJSON(errors.ErrInvalidUserID.Code, gin.H{"message": errors.ErrInvalidUserID.Message})
 			return
 		}
-		if !helpers.IsAdmin(logger, c, authController) {
-			claims, ok := helpers.CheckUser(logger, c, authController)
-			if !ok {
-				return
-			}
+		claims, ok := helpers.CheckUser(logger, c, authController)
+		if !ok {
+			return
+		}
 
-			id, ok := helpers.ExtractUserIDFromClaims(logger, c, claims)
-			if !ok {
-				return
-			}
+		id, ok := helpers.ExtractUserIDFromClaims(logger, c, claims)
+		if !ok {
+			return
+		}
 
-			if id != rawId {
-				c.AbortWithStatusJSON(errors.ErrPermissionDenied.Code, gin.H{"message": errors.ErrPermissionDenied.Message})
-				return
-			}
+		if id != rawId {
+			c.AbortWithStatusJSON(errors.ErrPermissionDenied.Code, gin.H{"message": errors.ErrPermissionDenied.Message})
+			return
 		}
 
 		updateUserRequest := &userPb.UpdateUserRequest{
@@ -157,7 +140,6 @@ func UpdateUserHandler(logger *zap.Logger, cfg *config.Config, clients *types.Ma
 			Nickname: schema.Nickname,
 			Email:    schema.Email,
 			Password: schema.Password,
-			IsAdmin:  schema.IsAdmin,
 		}
 
 		_, err = clients.User.Service.UpdateUser(clients.User.Ctx, updateUserRequest)
@@ -185,34 +167,27 @@ func UpdateUserHandler(logger *zap.Logger, cfg *config.Config, clients *types.Ma
 // @Router       /user/delete [delete]
 func DeleteUserHandler(logger *zap.Logger, cfg *config.Config, clients *types.MapClients, authController *jwt.AuthController) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var deleteId int32
+		var deleteId int64
 		var ok bool
 
-		if helpers.IsAdmin(logger, c, authController) {
-			deleteId, ok = helpers.ParseIDParam(logger, c, "id")
-			if !ok {
-				return
-			}
-		} else {
-			claims, ok := helpers.CheckUser(logger, c, authController)
-			if !ok {
-				return
-			}
+		claims, ok := helpers.CheckUser(logger, c, authController)
+		if !ok {
+			return
+		}
 
-			userId, ok := helpers.ExtractUserIDFromClaims(logger, c, claims)
-			if !ok {
-				return
-			}
+		userId, ok := helpers.ExtractUserIDFromClaims(logger, c, claims)
+		if !ok {
+			return
+		}
 
-			deleteId, ok = helpers.ParseIDParam(logger, c, "id")
-			if !ok {
-				return
-			}
+		deleteId, ok = helpers.ParseIDParam(logger, c, "id")
+		if !ok {
+			return
+		}
 
-			if userId != deleteId {
-				c.AbortWithStatusJSON(errors.ErrPermissionDenied.Code, gin.H{"message": errors.ErrPermissionDenied.Message})
-				return
-			}
+		if userId != deleteId {
+			c.AbortWithStatusJSON(errors.ErrPermissionDenied.Code, gin.H{"message": errors.ErrPermissionDenied.Message})
+			return
 		}
 
 		req := &userPb.DeleteUserRequest{

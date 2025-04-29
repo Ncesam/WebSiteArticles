@@ -21,14 +21,14 @@ import (
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Param        data body int32 true "Данные для добавления в очередь"
+// @Param        data body int64 true "Данные для добавления в очередь"
 // @Success      200 {object} map[string]string
 // @Failure      400 {object} map[string]string
 // @Failure      500 {object} map[string]string
 // @Router       /queue/ [post]
 func AddQueueHandler(logger *zap.Logger, cfg *config.Config, clients *types.MapClients, authController *jwt.AuthController) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var priority int32
+		var priority int64
 		if err := c.ShouldBindJSON(&priority); err != nil {
 			logger.Error("Invalid AddQueueForm", zap.Error(err))
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": "Invalid request data"})
