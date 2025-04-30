@@ -1,0 +1,41 @@
+syntax="proto3";
+
+
+package config;
+
+option go_package = "generated/proto/config;configPb";
+
+message addConfigRequest {
+    string name = 1;
+    int64 userId = 2;
+    string prompt = 3;
+    string refreshToken = 4;
+}
+
+message Config {
+    int64 Id = 1;
+    int64 userId = 2;
+    string name = 3;
+    string prompt = 4;
+    string refreshToken = 5;
+}
+
+message getConfigRequest{
+    int64 userId = 1;
+}
+
+message Configs {
+    repeated Config Configs = 1;
+}
+message deleteConfigRequest {
+    int64 Id = 1;
+    int64 userId = 2;
+}
+
+message Empty {}
+
+service ConfigService {
+    rpc AddConfig(addConfigRequest) returns (Config);
+    rpc DeleteConfig(deleteConfigRequest) returns (Empty);
+    rpc GetConfigs(getConfigRequest) returns (Configs);
+}

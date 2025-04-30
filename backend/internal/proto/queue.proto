@@ -2,34 +2,29 @@ syntax = "proto3";
 
 package queue;
 
-import "google/protobuf/empty.proto";
-
 option go_package = "generated/proto/queue;queuepb";
 
-message Queue {
-  int64 Id = 1;
-  int64 UserId = 2;
-  int64 Priority = 3;
+message Article {
+  string Title = 2;
+  repeated Block Blocks = 3;
 }
 
-message AddQueueRequest {
-  int64 UserId = 1;
-  int64 Priority = 2;
+message Block {
+  string Type = 1;
+  BlockData Data = 2;
 }
+message BlockData {
+  string Text = 1;
+  string Lang = 2;
+  repeated string Items = 3;
+  string Type = 4;
+}
+
 
 message ListQueueRequest { int64 UserId = 1; }
 
-message ListQueueResponse { repeated Queue Queues = 1; }
-
-message ViewQueueRequest { int64 Id = 1; }
-
-message ViewQueueResponse { int64 Id = 1; }
-
-message DelQueueRequest { int64 Id = 1; }
+message ListQueueResponse { repeated Article Articles = 1; }
 
 service QueueService {
-  rpc AddQueue(AddQueueRequest) returns (google.protobuf.Empty);
   rpc ListQueue(ListQueueRequest) returns (ListQueueResponse);
-  rpc ViewQueue(ViewQueueRequest) returns (ViewQueueResponse);
-  rpc DelQueue(DelQueueRequest) returns (google.protobuf.Empty);
 }

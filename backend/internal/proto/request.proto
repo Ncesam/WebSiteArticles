@@ -4,12 +4,46 @@ package request;
 
 option go_package = "generated/proto/request;request";
 
+enum WebSite {
+  DTF = 0;
+  VC_RU = 1;
+}
+
 message sendArticleRequest {
-  int64 ConfigId = 1;
+  WebSite WebSite = 1;
   string Title = 2;
-  repeated string Blocks = 3;
+  repeated Block Blocks = 3;
+}
+message Block {
+  string Type = 1;
+  BlockData Data = 2;
+}
+message BlockData {
+  string Text = 1;
+  string Lang = 2;
+  repeated string Items = 3;
+  string Type = 4;
+}
+
+message uploadMediaRequest {
+  string Type = 1;
+  bytes File = 2;
+}
+
+message uploadMediaResponse {
+  string UID = 1;
+}
+message generateTextRequest {
+  string prompt = 1;
+}
+
+message Text {
+  string Text = 1;
 }
 message Empty {}
+
 service RequestService {
   rpc SendArticle(sendArticleRequest) returns (Empty);
+  rpc UploadMedia(uploadMediaRequest) returns (uploadMediaResponse);
+  rpc GenerateText(generateTextRequest) returns (Text);
 }

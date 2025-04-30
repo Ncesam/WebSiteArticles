@@ -17,7 +17,7 @@ all: tidy proto swag build
 
 ## Генерация protobuf файлов
 proto:
-	protoc -I ./internal/proto --go_out=. --go-grpc_out=. ./internal/proto/*.proto
+	protoc -I ${PROTO_DIR} --go_out=. --go-grpc_out=. ${PROTO_DIR}/*.proto
 
 ## Сборка приложения
 build:
@@ -25,7 +25,7 @@ build:
 	go build -o $(BIN_DIR)/$(AUTH_NAME) $(AUTH_PATH)
 ## Запуск приложения
 run: build
-	./$(BIN_DIR)/$(APP_NAME)
+	./$(BIN_DIR)/${AUTH_NAME}
 
 ## Удаление сгенерированных бинарников и временных файлов
 clean:
