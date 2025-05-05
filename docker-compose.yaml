@@ -43,7 +43,7 @@ services:
 
   config:
     build:
-      context: ./backend/deploy/config
+      context: ./backend/deploy/config/.
       dockerfile: Dockerfile
     container_name: config_service
     depends_on:
@@ -55,7 +55,7 @@ services:
 
   queue:
     build:
-      context: ./backend/deploy/queue
+      context: ./backend/deploy/queue/.
       dockerfile: Dockerfile
     container_name: queue_service
     ports:
@@ -65,7 +65,7 @@ services:
 
   request:
     build:
-      context: ./backend/deploy/request
+      context: ./backend/deploy/request/.
       dockerfile: Dockerfile
     container_name: request_service
     ports:
@@ -75,7 +75,7 @@ services:
 
   gateway:
     build:
-      context: ./backend/deploy/gateway
+      context: ./backend/deploy/gateway/.
       dockerfile: Dockerfile
     container_name: gateway
     ports:
