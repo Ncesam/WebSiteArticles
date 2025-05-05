@@ -3,6 +3,7 @@ version: '3.9'
 services:
   postgres:
     image: postgres:15-alpine
+    container_name: postgres
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: yourpass
@@ -16,6 +17,7 @@ services:
 
   mongo:
     image: mongo:6
+    container_name: mongo
     ports:
       - "27017:27017"
     volumes:
@@ -25,8 +27,8 @@ services:
 
   auth:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: deploy/auth/Dockerfile
     container_name: auth_service
     depends_on:
       - postgres
@@ -43,8 +45,8 @@ services:
 
   config:
     build:
-      context: ./backend/deploy/config/.
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: deploy/config/Dockerfile
     container_name: config_service
     depends_on:
       - mongo
@@ -55,8 +57,8 @@ services:
 
   queue:
     build:
-      context: ./backend/deploy/queue/.
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: deploy/queue/Dockerfile
     container_name: queue_service
     ports:
       - "50003:8080"
@@ -65,8 +67,8 @@ services:
 
   request:
     build:
-      context: ./backend/deploy/request/.
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: deploy/request/Dockerfile
     container_name: request_service
     ports:
       - "50004:8080"
@@ -75,8 +77,8 @@ services:
 
   gateway:
     build:
-      context: ./backend/deploy/gateway/.
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: deploy/gateway/Dockerfile
     container_name: gateway
     ports:
       - "8080:8080"
