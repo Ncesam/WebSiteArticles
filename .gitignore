@@ -1,7 +1,8 @@
 src/frontent/build
 node_modules
 .idea
-gateway.exe
+bin/*
+docs/*
 .env
 logs.log
 *.pb.go

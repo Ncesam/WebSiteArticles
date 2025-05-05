@@ -37,6 +37,16 @@ type Config struct {
 		}
 	}
 	AUTH_SERVICE struct {
-		ADDRESS string `env:"AUTH_SERVICE_ADDRESS" env-required:"true" env-description:"Адресс микросервиса"`
+		ADDRESS string `env:"AUTH_SERVICE_ADDRESS" env-required:"true" env-description:"Адрес микросервиса"`
 	}
+	CONFIG_SERVICE struct {
+		ADDRESS string `env:"CONFIG_SERVICE_ADDRESS" env-required:"true" env-description:"Адрес микросервиса"`
+	}
+	QUEUE_SERVICE struct {
+		ADDRESS string `env:"QUEUE_SERVICE_ADDRESS" env-required:"true" env-description:"Адрес микросервиса"`
+	}
+	REQUEST_SERVICE struct {
+		ADDRESS string `env:"REQUEST_SERVICE_ADDRESS" env-required:"true" env-description:"Адрес микросервиса"`
+	}
+	OPEN_AI_KEY string `env:"OPEN_AI_KEY" env-required:"false" env-description:"Ключ API Open AI"`
 }

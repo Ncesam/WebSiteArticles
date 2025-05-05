@@ -1,18 +1,19 @@
 package main
 
 import (
-	authPb "backend/generated/proto/auth"
-	authServer "backend/internal/auth"
-	"backend/internal/database/postgres"
-	"backend/pkg/config"
-	"backend/pkg/logger"
-	jwt "backend/pkg/security/JWT"
 	"log"
 	"net"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
+
+	authPb "backend/generated/proto/auth"
+	authServer "backend/internal/auth"
+	"backend/internal/database/postgres"
+	"backend/pkg/config"
+	"backend/pkg/logger"
+	jwt "backend/pkg/security/JWT"
 )
 
 func main() {
@@ -49,6 +50,7 @@ func main() {
 			zap.String("address", cfg.AUTH_SERVICE.ADDRESS),
 		)
 	}
+	loggerInstanse.Info("Auth Service started" + cfg.AUTH_SERVICE.ADDRESS)
 	server.Serve(listener)
 
 }

@@ -1,0 +1,115 @@
+package config
+
+import (
+	"context"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.uber.org/zap"
+
+	configPb "backend/generated/proto/config"
+	"backend/internal/database/mongo"
+	"backend/pkg/config"
+)
+
+type ConfigServer struct {
+	configPb.UnimplementedConfigServiceServer
+	logger *zap.Logger
+	cfg    *config.Config
+	ctx    context.Context
+	db     *mongo.MongoDatabase
+}
+
+func NewConfigServer(logger *zap.Logger, cfg *config.Config, db *mongo.MongoDatabase) *ConfigServer {
+	return &ConfigServer{
+		logger: logger,
+		cfg:    cfg,
+		ctx:    context.Background(),
+		db:     db,
+	}
+}
+
+func (s *ConfigServer) AddConfig(ctx context.Context, req *configPb.AddConfigRequest) (*configPb.Config, error) {
+	doc := &mongo.Config{
+		UserId:          req.UserId,
+		Name:            req.Name,
+		Prompt:          req.Prompt,
+		Email:           req.Email,
+		Password:        req.Password,
+		Delay:           req.Delay,
+	}
+
+	err := s.db.AddConfig(doc)
+	if err != nil {
+		s.logger.Error("Failed to insert config", zap.Error(err))
+		return nil, err
+	}
+	result := &configPb.Config{
+		Id:           doc.Id,
+		UserId:       doc.UserId,
+		Name:         doc.Name,
+		Prompt:       doc.Prompt,
+		Email:        doc.Email,
+		Password:     doc.Password,
+		Delay:        doc.Delay,
+	}
+	return result, nil
+}
+
+func (s *ConfigServer) GetConfigs(ctx context.Context, req *configPb.GetConfigsRequest) (*configPb.Configs, error) {
+	configs, err := s.db.GetConfigWithFilter(bson.M{"userId": req.UserId})
+	if err != nil {
+		s.logger.Error("Failed to find configs", zap.Error(err))
+		return nil, err
+	}
+	var result []*configPb.Config
+	for i := range configs {
+		config := &configPb.Config{
+			Id:           configs[i].Id,
+			UserId:       configs[i].UserId,
+			Name:         configs[i].Name,
+			Prompt:       configs[i].Prompt,
+			Email:        configs[i].Email,
+			Password:     configs[i].Password,
+			Delay:        configs[i].Delay,
+		}
+
+		result = append(result, config)
+		{
+			s.logger.Error("Failed to decode config", zap.Error(err))
+			continue
+		}
+	}
+
+	return &configPb.Configs{Configs: result}, nil
+}
+
+func (s *ConfigServer) DeleteConfig(ctx context.Context, req *configPb.DeleteConfigRequest) (*configPb.Empty, error) {
+	err := s.db.DeleteConfig(bson.M{"id": req.Id, "userId": req.UserId})
+	if err != nil {
+		s.logger.Error("Failed to delete config", zap.Error(err))
+		return nil, err
+	}
+	return &configPb.Empty{}, nil
+}
+
+func (s *ConfigServer) GetConfig(ctx context.Context, req *configPb.GetConfigRequest) (*configPb.Config, error) {
+	config, err := s.db.GetConfigByID(primitive.ObjectID{byte(req.ConfigId)})
+	if err != nil {
+		s.logger.Error("Failed to find configs", zap.Error(err))
+		return nil, err
+	}
+	result := &configPb.Config{
+		Id: config.Id,
+		UserId: config.UserId,
+		Name: config.Name,
+		Prompt: config.Prompt,
+		Email: config.Email,
+		Password: config.Password,
+		Delay: config.Delay,
+		RefreshTokenDTF: config.RefreshTokenDTF,
+		RefreshTokenVC: config.RefreshTokenVC,
+	}
+
+	return result, nil
+}

@@ -1,0 +1,97 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: yourpass
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend_net
+
+  mongo:
+    image: mongo:6
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - backend_net
+
+  auth:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: auth_service
+    depends_on:
+      - postgres
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: yourpass
+      POSTGRES_DATABASE: postgres
+    ports:
+      - "50001:8080"
+    networks:
+      - backend_net
+
+  config:
+    build:
+      context: ./backend/deploy/config
+      dockerfile: Dockerfile
+    container_name: config_service
+    depends_on:
+      - mongo
+    ports:
+      - "50002:8080"
+    networks:
+      - backend_net
+
+  queue:
+    build:
+      context: ./backend/deploy/queue
+      dockerfile: Dockerfile
+    container_name: queue_service
+    ports:
+      - "50003:8080"
+    networks:
+      - backend_net
+
+  request:
+    build:
+      context: ./backend/deploy/request
+      dockerfile: Dockerfile
+    container_name: request_service
+    ports:
+      - "50004:8080"
+    networks:
+      - backend_net
+
+  gateway:
+    build:
+      context: ./backend/deploy/gateway
+      dockerfile: Dockerfile
+    container_name: gateway
+    ports:
+      - "8080:8080"
+    depends_on:
+      - auth
+      - config
+      - queue
+      - request
+    networks:
+      - backend_net
+
+volumes:
+  postgres_data:
+  mongo_data:
+
+networks:
+  backend_net:
+    driver: bridge

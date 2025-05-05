@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package request;
 
+import "google/protobuf/any.proto";
+
 option go_package = "generated/proto/request;request";
 
 enum WebSite {
@@ -11,19 +13,82 @@ enum WebSite {
 
 message sendArticleRequest {
   WebSite WebSite = 1;
-  string Title = 2;
-  repeated Block Blocks = 3;
+  EntryRequest Entry = 3;
+  int64 configId = 4;
 }
+
+
+message EntryRequest {
+  int64 id = 1;
+  int64 user_id = 2;
+  int32 subsite_id = 3;
+  int32 type = 4;
+  string title = 5;
+  Entry entry = 6;
+}
+
+message Entry {
+  repeated Block blocks = 1;
+}
+
 message Block {
-  string Type = 1;
-  BlockData Data = 2;
+  string type = 1;
+  bool cover = 2;
+  bool hidden = 3;
+  string anchor = 4;
+  BlockData data = 5;
 }
+
 message BlockData {
-  string Text = 1;
-  string Lang = 2;
-  repeated string Items = 3;
-  string Type = 4;
+  // list
+  repeated string items = 1;
+  string type = 2;
+
+  // quote/text
+  string text = 3;
+  string subline1 = 4;
+
+  // media
+  ImageItem image = 5;
+
+  // link
+  Link link = 6;
 }
+
+message ImageItem {
+  string type = 1;
+  ImageData data = 2;
+}
+
+message ImageData {
+  string uuid = 1;
+  int32 width = 2;
+  int32 height = 3;
+  int32 size = 4;
+  string type = 5;
+  string color = 6;
+  string hash = 7;
+  repeated string external_service = 8;
+  string base64preview = 9;
+  bool isVideo = 10;
+  int32 duration = 11;
+  bool has_audio = 12;
+}
+
+message Link {
+  string type = 1;
+  LinkData data = 2;
+}
+
+message LinkData {
+  string url = 1;
+  string title = 2;
+  string description = 3;
+  google.protobuf.Any image = 4;
+  int32 v = 5;
+  string hostname = 6;
+}
+
 
 message uploadMediaRequest {
   string Type = 1;
@@ -36,9 +101,17 @@ message uploadMediaResponse {
 message generateTextRequest {
   string prompt = 1;
 }
+message getRefreshTokenRequest {
+  string email = 1;
+  string password = 2;
+}
 
+message getRefreshTokenResponse {
+  string refreshToken = 1;
+}
 message Text {
-  string Text = 1;
+  string Title = 1;
+  repeated Block Blocks = 2;
 }
 message Empty {}
 
@@ -46,4 +119,6 @@ service RequestService {
   rpc SendArticle(sendArticleRequest) returns (Empty);
   rpc UploadMedia(uploadMediaRequest) returns (uploadMediaResponse);
   rpc GenerateText(generateTextRequest) returns (Text);
+  rpc GetRefreshTokenDTF(getRefreshTokenRequest) returns (getRefreshTokenResponse);
+  rpc GetRefreshTokenVC(getRefreshTokenRequest) returns (getRefreshTokenResponse);
 }

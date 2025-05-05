@@ -9,7 +9,11 @@ message addConfigRequest {
     string name = 1;
     int64 userId = 2;
     string prompt = 3;
-    string refreshToken = 4;
+    string refreshTokenDTF = 4;
+    int64 delay = 5;
+    string email = 6;
+    string password = 7;
+    string refreshTokenVC = 8;
 }
 
 message Config {
@@ -17,11 +21,18 @@ message Config {
     int64 userId = 2;
     string name = 3;
     string prompt = 4;
-    string refreshToken = 5;
+    string refreshTokenDTF = 5;
+    string email = 6;
+    string password = 7;
+    int64 delay = 8;
+    string refreshTokenVC = 9;
 }
 
-message getConfigRequest{
+message getConfigsRequest{
     int64 userId = 1;
+}
+message getConfigRequest {
+    int64 configId = 1;
 }
 
 message Configs {
@@ -31,11 +42,22 @@ message deleteConfigRequest {
     int64 Id = 1;
     int64 userId = 2;
 }
+message updateRefreshTokenDTFRequest {
+    string refreshTokenDTF = 1;
+    int64 id = 2;
+}
+message updateRefreshTokenVCRequest {
+    string refreshTokenVC = 1;
+    int64 id = 2;
+}
 
 message Empty {}
 
 service ConfigService {
     rpc AddConfig(addConfigRequest) returns (Config);
     rpc DeleteConfig(deleteConfigRequest) returns (Empty);
-    rpc GetConfigs(getConfigRequest) returns (Configs);
+    rpc GetConfigs(getConfigsRequest) returns (Configs);
+    rpc GetConfig(getConfigRequest) returns (Config);
+    rpc UpdateRefreshDTFToken(updateRefreshTokenDTFRequest) returns (Config);
+    rpc UpdateRefreshVCToken(updateRefreshTokenVCRequest) returns (Config);
 }

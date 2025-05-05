@@ -36,9 +36,6 @@ func registerAuthRouters(router *gin.Engine, logger *zap.Logger, clients *types.
 
 func registerQueueRouters(router *gin.Engine, logger *zap.Logger, clients *types.MapClients, cfg *config.Config, authController *jwt.AuthController) {
 	queueGroup := router.Group("/queue")
-	queueGroup.POST("/", routers.AddQueueHandler(logger, cfg, clients, authController))
-	queueGroup.GET("/", routers.ListQueueHandler(logger, cfg, clients, authController))
-	queueGroup.GET("/view", routers.ViewQueueHandler(logger, cfg, clients, authController))
-	queueGroup.DELETE("/", routers.DeleteQueueHandler(logger, cfg, clients, authController))
+	queueGroup.POST("/", routers.StartConfig(logger, cfg, clients, authController))
 	logger.Info("Queue routes registered")
 }

@@ -1,19 +1,19 @@
 package main
 
 import (
-	configPb "backend/generated/proto/config"
-	queuepb "backend/generated/proto/queue"
-	"backend/generated/proto/request"
-	"backend/internal/queue"
-	"backend/pkg/config"
-	grpcfactory "backend/pkg/grpcFactory"
-	"backend/pkg/logger"
 	"log"
 	"net"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
+
+	configPb "backend/generated/proto/config"
+	requestPb "backend/generated/proto/request"
+	"backend/internal/request"
+	"backend/pkg/config"
+	grpcfactory "backend/pkg/grpcFactory"
+	"backend/pkg/logger"
 )
 
 func main() {
@@ -36,30 +36,22 @@ func main() {
 	}
 	defer loggerInstanse.Sync()
 
-	grpcServer := grpc.NewServer();
+	grpcServer := grpc.NewServer()
 
 	configClient, err := grpcfactory.NewClient(cfg.CONFIG_SERVICE.ADDRESS, loggerInstanse, cfg, configPb.NewConfigServiceClient)
 	if err != nil {
 		loggerInstanse.Error("Can't connect to config service", zap.Error(err))
 		return
 	}
-	requestClient, err := grpcfactory.NewClient(cfg.REQUEST_SERVICE.ADDRESS, loggerInstanse, cfg, request.NewRequestServiceClient)
-	if err != nil {
-		loggerInstanse.Error("Can't connect to request service", zap.Error(err))
-		return
-	}
+	requestServer := request.NewRequestServer(loggerInstanse, cfg, configClient)
 
-	queueLogics := queue.NewLogics(loggerInstanse, cfg, configClient, requestClient)
+	requestPb.RegisterRequestServiceServer(grpcServer, requestServer)
 
-	queueServer := queue.NewServer(loggerInstanse, cfg, queueLogics)
-
-	queuepb.RegisterQueueServiceServer(grpcServer, queueServer)
-
-	listener, err := net.Listen("tcp", cfg.QUEUE_SERVICE.ADDRESS)
+	listener, err := net.Listen("tcp", cfg.REQUEST_SERVICE.ADDRESS)
 	if err != nil {
 		loggerInstanse.Fatal("Failed to listen",
 			zap.Error(err),
-			zap.String("address", cfg.QUEUE_SERVICE.ADDRESS),
+			zap.String("address", cfg.REQUEST_SERVICE.ADDRESS),
 		)
 	}
 	grpcServer.Serve(listener)

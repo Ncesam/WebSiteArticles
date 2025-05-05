@@ -1,53 +1,55 @@
 # ========== CONFIG ==========
-GATEWAY_NAME=gateway
-AUTH_NAME=auth_service
-BIN_DIR=bin
-PROTO_DIR=./internal/proto
-GATEWAY_PATH=cmd/gateway/main.go
-AUTH_PATH=cmd/auth/main.go
-DOCS_DIR=docs
-SWAG_OUT=./$(DOCS_DIR)
+BIN_DIR    := bin
+PROTO_DIR  := internal/proto
+DOCS_DIR   := docs
+SWAG_OUT   := $(DOCS_DIR)
 
-# ========== COMMANDS ==========
+# список сервисов (имена директорий в cmd/)
+SERVICES   := gateway auth request queue config
 
-.PHONY: all proto build run clean swag tidy lint test
+.PHONY: all proto build clean swag tidy lint test run
 
-## Сборка всех целей по порядку
+## Сборка всего по порядку
 all: tidy proto swag build
 
-## Генерация protobuf файлов
+## Генерация protobuf
 proto:
-	protoc -I ${PROTO_DIR} --go_out=. --go-grpc_out=. ${PROTO_DIR}/*.proto
+	protoc -I=$(PROTO_DIR) \
+		--go_out=. --go-grpc_out=. \
+		$(PROTO_DIR)/*.proto
 
-## Сборка приложения
-build:
-	go build -o $(BIN_DIR)/$(GATEWAY_NAME) $(GATEWAY_PATH)
-	go build -o $(BIN_DIR)/$(AUTH_NAME) $(AUTH_PATH)
-## Запуск приложения
+## Шаблон для сборки одного сервиса
+# cmd/<name>/main.go → bin/<name>
+$(BIN_DIR)/%: cmd/%/main.go
+	@mkdir -p $(BIN_DIR)
+	go build -o $@ $<
+
+## Сборка всех сервисов
+build: $(addprefix $(BIN_DIR)/, $(SERVICES))
+
+## Запуск (по умолчанию запускаем auth)
 run: build
-	./$(BIN_DIR)/${AUTH_NAME}
+	./$(BIN_DIR)/auth
 
-## Удаление сгенерированных бинарников и временных файлов
+## Очистка артефактов
 clean:
 	rm -rf $(BIN_DIR)/*
-	find ./generated/ -name "*.pb.go" -type f -delete
+	find . -name "*.pb.go" -type f -delete
 	rm -rf $(SWAG_OUT)/*.json $(SWAG_OUT)/*.yaml $(SWAG_OUT)/docs.go
-	rm -rf logs/logs.log
+	rm -rf logs
 
-## Генерация Swagger документации
+## Генерация Swagger (swaggo)
 swag:
 	swag init 
 
-## Обновить зависимости
+## Обновление зависимостей
 tidy:
 	go mod tidy
 
-## Проверка стиля кода
+## Линтинг
 lint:
 	golangci-lint run ./...
 
-## Запуск тестов
+## Тесты
 test:
 	go test ./... -v
-
-

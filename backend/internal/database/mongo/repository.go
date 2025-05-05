@@ -57,8 +57,7 @@ func (m *MongoDatabase) Disconnect() error {
 	return nil
 }
 
-func (m *MongoDatabase) AddConfig(config *ConfigSchema) (*ConfigSchema, error) {
-	// Устанавливаем таймаут для операции
+func (m *MongoDatabase) AddConfig(config *Config) (error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	collection := m.db.Collection("configs")
@@ -68,19 +67,18 @@ func (m *MongoDatabase) AddConfig(config *ConfigSchema) (*ConfigSchema, error) {
 		m.logger.Error("Failed to insert config",
 			zap.Error(err),
 			zap.Any("config", config))
-		return nil, err
+		return err
 	}
-	if oid, ok := result.InsertedID.(primitive.ObjectID); ok {
-		config.ID = oid
+	if oid, ok := result.InsertedID.(int64); ok {
+		config.Id = oid
 	}
 
 	m.logger.Debug("Config successfully added",
 		zap.Any("config", config))
-
-	return config, nil
+	return nil
 }
 
-func (m *MongoDatabase) GetConfigs() ([]ConfigSchema, error) {
+func (m *MongoDatabase) GetConfigs() ([]Config, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -93,7 +91,7 @@ func (m *MongoDatabase) GetConfigs() ([]ConfigSchema, error) {
 	}
 	defer cursor.Close(ctx)
 
-	var configs []ConfigSchema
+	var configs []Config
 	if err = cursor.All(ctx, &configs); err != nil {
 		m.logger.Error("Failed to decode configs", zap.Error(err))
 		return nil, fmt.Errorf("failed to decode configs: %w", err)
@@ -101,13 +99,13 @@ func (m *MongoDatabase) GetConfigs() ([]ConfigSchema, error) {
 
 	return configs, nil
 }
-func (m *MongoDatabase) GetConfigByID(id primitive.ObjectID) (*ConfigSchema, error) {
+func (m *MongoDatabase) GetConfigByID(id primitive.ObjectID) (*Config, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	collection := m.db.Collection("configs")
 
-	var config ConfigSchema
+	var config Config
 	err := collection.FindOne(ctx, bson.M{"_id": id}).Decode(&config)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
@@ -121,7 +119,7 @@ func (m *MongoDatabase) GetConfigByID(id primitive.ObjectID) (*ConfigSchema, err
 
 	return &config, nil
 }
-func (m *MongoDatabase) GetConfigWithFilter(filter interface{}) ([]ConfigSchema, error) {
+func (m *MongoDatabase) GetConfigWithFilter(filter interface{}) ([]Config, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -136,11 +134,24 @@ func (m *MongoDatabase) GetConfigWithFilter(filter interface{}) ([]ConfigSchema,
 	}
 	defer cursor.Close(ctx)
 
-	var configs []ConfigSchema
+	var configs []Config
 	if err = cursor.All(ctx, &configs); err != nil {
 		m.logger.Error("Failed to decode configs", zap.Error(err))
 		return nil, fmt.Errorf("failed to decode configs: %w", err)
 	}
 
 	return configs, nil
+}
+
+func (m *MongoDatabase) DeleteConfig (filter interface{}) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	collection := m.db.Collection("configs")
+
+	_, err := collection.DeleteOne(ctx, filter)
+	if err != nil {
+		m.logger.Error("Failed to delete config", zap.Error(err))
+		return err
+	}
+	return nil;
 }
