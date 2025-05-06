@@ -1,14 +1,12 @@
-import themesStore from "./themesStore";
+
 import userStore from "./userStore";
 
 
 
-class RootStore{
+class RootStore {
     userStore: userStore;
-    themesStore: themesStore
     constructor() {
-        this.userStore = new userStore(),
-        this.themesStore = new themesStore()
+        this.userStore = new userStore()
     }
 }
 

@@ -1,8 +1,5 @@
-export const SETTINGS_ROUTE = "/settings"
-export const DASHBOARD_ROUTE = "/dashboard"
+
+export const PANEL_ROUTE = "/panel"
 export const LOGIN_ROUTE = "/login"
 export const REGISTER_ROUTE = "/registration"
-export const THEMES_ROUTE = "/themes"
-export const PROMPTS_ROUTE = "/prompts"
-export const ADD_ARTICLE_ROUTE = "/add-article"
-export const QUEUE_ROUTE = "/queue"
+export const ADD_CONFIG_ROUTE = "/add-config"

@@ -148,7 +148,6 @@ func Me(logger *zap.Logger, cfg *config.Config, clients *types.MapClients, authC
 			helpers.HandleGrpcError(logger, c, err, "Failed to get user data")
 			return
 		}
-
 		c.JSON(200, resp)
 	}
 }

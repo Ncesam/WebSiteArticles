@@ -1,9 +1,9 @@
-import React, {FC, Suspense} from "react";
-import {useStore} from "./hooks/store";
-import {Navigate, Route, Routes} from "react-router-dom";
+import React, { FC, Suspense } from "react";
+import { useStore } from "./hooks/store";
+import { Navigate, Route, Routes } from "react-router-dom";
 import RootStore from "./stores/rootStore";
-import {DASHBOARD_ROUTE, LOGIN_ROUTE} from "./utils/consts";
-import {authRoutes, primaryRoutes} from "./routes";
+import { LOGIN_ROUTE, PANEL_ROUTE } from "./utils/consts";
+import { authRoutes, primaryRoutes } from "./routes";
 
 
 const AppRoutes: FC = () => {
@@ -13,17 +13,17 @@ const AppRoutes: FC = () => {
             <Routes>
                 {context.userStore.IsAuth ? (
                     <>
-                        {authRoutes.map(({path, component}) => (
-                            <Route key={path} path={path} element={React.createElement(component)}/>
+                        {authRoutes.map(({ path, component }) => (
+                            <Route key={path} path={path} element={React.createElement(component)} />
                         ))}
-                        <Route path="*" element={<Navigate to={LOGIN_ROUTE}/>}/>
+                        <Route path="*" element={<Navigate to={LOGIN_ROUTE} />} />
                     </>
                 ) : (
                     <>
-                        {primaryRoutes.map(({path, component}) => (
-                            <Route key={path} path={path} element={React.createElement(component)}/>
+                        {primaryRoutes.map(({ path, component }) => (
+                            <Route key={path} path={path} element={React.createElement(component)} />
                         ))}
-                        <Route path="*" element={<Navigate to={DASHBOARD_ROUTE}/>}/>
+                        <Route path="*" element={<Navigate to={PANEL_ROUTE} />} />
                     </>
                 )}
             </Routes>

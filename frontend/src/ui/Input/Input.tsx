@@ -16,6 +16,17 @@ const Input: FC<InputProps> = ({
 }) => {
     return (
         <div className={"flex flex-col w-full gap-1"}>
+
+            {helperText && (
+                <p
+                    className={clsx(
+                        "text-xs ml-1",
+                        error ? "text-red-400" : "text-base-darkBlue"
+                    )}
+                >
+                    {helperText}
+                </p>
+            )}
             <div className={
                 clsx(
                     "flex items-center px-4 py-2 rounded-xl transition-all duration-300 ease-in-out",
@@ -31,17 +42,6 @@ const Input: FC<InputProps> = ({
                 {Icon && <Icon className={"text-base-grayBlue w-4 h-4 mr-2"} />}
                 <input type={type} className={style} onChange={onChange} placeholder={placeholder} value={value} />
             </div>
-
-            {helperText && (
-                <p
-                    className={clsx(
-                        "text-xs ml-1",
-                        error ? "text-red-400" : "text-base-lightBlue"
-                    )}
-                >
-                    {helperText}
-                </p>
-            )}
         </div>
     );
 };

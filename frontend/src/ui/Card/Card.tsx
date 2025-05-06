@@ -7,7 +7,7 @@ const Card: FC<CardProps> = ({style = "default", title, subtitle, children}) => 
     return (
         <div
             className={clsx(
-                "rounded-2xl p-6 bg-base-lightBlue/75 text-white shadow-md transition duration-300 delay-100 ease-in hover:shadow-lg hover:shadow-base-darkBlue",
+                "w-full h-full rounded-2xl p-6 bg-base-lightBlue/75 text-white shadow-md transition duration-300 delay-100 ease-in hover:shadow-lg hover:shadow-base-darkBlue",
                 styleMap[style]
             )}
         >
@@ -21,7 +21,7 @@ const Card: FC<CardProps> = ({style = "default", title, subtitle, children}) => 
                     {subtitle}
                 </p>
             )}
-            <div className="animate-fade-in">{children}</div>
+            <div className="w-full h-full animate-fade-in">{children}</div>
         </div>
     );
 };

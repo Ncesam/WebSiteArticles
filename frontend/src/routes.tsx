@@ -1,8 +1,7 @@
-import {lazy} from "react";
-import {ADD_ARTICLE_ROUTE, DASHBOARD_ROUTE, LOGIN_ROUTE, REGISTER_ROUTE, SETTINGS_ROUTE} from "./utils/consts";
-import DashBoard from "./pages/DashBoard/DashBoard";
-import AddArticle from "./pages/AddArticle/AddArticle";
-import Settings from "./pages/Settings/Settings";
+import { lazy } from "react";
+import { ADD_CONFIG_ROUTE, LOGIN_ROUTE, PANEL_ROUTE, REGISTER_ROUTE,  } from "./utils/consts";
+import AddConfig from "./pages/AddConfig/AddConifg";
+import Panel from "./pages/Panel/Panel";
 
 const Registration = lazy(() => import("@/pages/Registration/Registration"));
 const Login = lazy(() => import("@/pages/Login/Login"))
@@ -19,27 +18,11 @@ export const authRoutes = [
 ]
 export const primaryRoutes = [
     {
-        path: SETTINGS_ROUTE,
-        component: Settings
+        path: PANEL_ROUTE,
+        component: Panel
     },
     {
-        path: ADD_ARTICLE_ROUTE,
-        component: AddArticle
-    },
-    {
-        path: DASHBOARD_ROUTE,
-        component: DashBoard
-    },
-    // {
-    //     path:  PROMPTS_ROUTE,
-    //     component: Prompts
-    // },
-    // {
-    //     path: QUEUE_ROUTE,
-    //     component: Queue
-    // },
-    // {
-    //     path: THEMES_ROUTE,
-    //     component: Themes
-    // }
+        path: ADD_CONFIG_ROUTE,
+        component: AddConfig
+    }
 ]
