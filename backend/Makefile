@@ -3,6 +3,7 @@ BIN_DIR    := bin
 PROTO_DIR  := internal/proto
 DOCS_DIR   := docs
 SWAG_OUT   := $(DOCS_DIR)
+PROTOC_GEN_PATH := $(shell go list -f '{{ .Dir }}' -m github.com/google/protobuf)
 
 # список сервисов (имена директорий в cmd/)
 SERVICES   := gateway auth request queue config
@@ -14,9 +15,12 @@ all: tidy proto swag build
 
 ## Генерация protobuf
 proto:
-	protoc -I=$(PROTO_DIR) \
-		--go_out=. --go-grpc_out=. \
-		$(PROTO_DIR)/*.proto
+	protoc \
+		-I=$(PROTO_DIR) \
+		-I=third_party \
+		--go_out=. \
+		--go-grpc_out=. \
+		$(PROTO_DIR)/*.proto \
 
 ## Шаблон для сборки одного сервиса
 # cmd/<name>/main.go → bin/<name>

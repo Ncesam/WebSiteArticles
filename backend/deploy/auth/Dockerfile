@@ -1,22 +1,41 @@
-FROM golang:1.21-alpine as builder
+FROM golang:1.24-alpine as builder
 
+# Установка необходимых пакетов
+RUN apk update && apk add --no-cache \
+    git \
+    curl \
+    unzip \
+    protobuf \
+    make
+
+# Установка Go-плагинов для protobuf и swag
+RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+RUN go install github.com/swaggo/swag/cmd/swag@latest
+
+# Работаем в директории приложения
 WORKDIR /app
 
-COPY go.mod ./
-COPY go.sum ./
+# Копируем зависимости
+COPY go.mod go.sum ./
 RUN go mod download
 
-COPY . .
-RUN make proto
-RUN make swag
 
+# Копируем остальное
+COPY . .
+
+# Генерация protobuf и swagger
+RUN make proto swag
+
+# Сборка
 RUN go build -o /auth_service ./cmd/auth/main.go
 
+# Финальный образ
 FROM alpine:latest
 
 WORKDIR /root/
+COPY --from=builder /app/config/.env ./config/.env
 COPY --from=builder /auth_service .
 
-EXPOSE 8080
 
 CMD ["./auth_service"]

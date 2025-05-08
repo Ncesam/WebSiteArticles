@@ -1,15 +1,15 @@
 version: '3.9'
 
 services:
-  postgres:
+  postgresdb:
     image: postgres:15-alpine
-    container_name: postgres
+    container_name: postgresdb
     environment:
       POSTGRES_USER: admin
-      POSTGRES_PASSWORD: yourpass
-      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD: JVl2kF
+      POSTGRES_DB: API
     ports:
-      - "5432:5432"
+      - "5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -19,9 +19,12 @@ services:
     image: mongo:6
     container_name: mongo
     ports:
-      - "27017:27017"
+      - "27017"
     volumes:
       - mongo_data:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: JVl2kF
     networks:
       - backend_net
 
@@ -31,15 +34,9 @@ services:
       dockerfile: deploy/auth/Dockerfile
     container_name: auth_service
     depends_on:
-      - postgres
-    environment:
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: yourpass
-      POSTGRES_DATABASE: postgres
+      - postgresdb
     ports:
-      - "50001:8080"
+      - "50001"
     networks:
       - backend_net
 
@@ -51,7 +48,7 @@ services:
     depends_on:
       - mongo
     ports:
-      - "50002:8080"
+      - "50002"
     networks:
       - backend_net
 
@@ -61,7 +58,7 @@ services:
       dockerfile: deploy/queue/Dockerfile
     container_name: queue_service
     ports:
-      - "50003:8080"
+      - "50003"
     networks:
       - backend_net
 
@@ -71,7 +68,7 @@ services:
       dockerfile: deploy/request/Dockerfile
     container_name: request_service
     ports:
-      - "50004:8080"
+      - "50004"
     networks:
       - backend_net
 
@@ -81,7 +78,7 @@ services:
       dockerfile: deploy/gateway/Dockerfile
     container_name: gateway
     ports:
-      - "8080:8080"
+      - "8000:8000"
     depends_on:
       - auth
       - config 
@@ -89,6 +86,19 @@ services:
       - request
     networks:
       - backend_net
+      - frontend_net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - gateway
+    networks:
+      - frontend_net
 
 volumes:
   postgres_data:
@@ -96,4 +106,6 @@ volumes:
 
 networks:
   backend_net:
+    driver: bridge
+  frontend_net:
     driver: bridge
