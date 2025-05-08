@@ -1,10 +1,10 @@
 import { lazy } from "react";
 import { ADD_CONFIG_ROUTE, LOGIN_ROUTE, PANEL_ROUTE, REGISTER_ROUTE,  } from "./utils/consts";
-import AddConfig from "./pages/AddConfig/AddConifg";
-import Panel from "./pages/Panel/Panel";
 
 const Registration = lazy(() => import("@/pages/Registration/Registration"));
 const Login = lazy(() => import("@/pages/Login/Login"))
+const Panel = lazy(() => import("@/pages/Panel/Panel"))
+const AddConfig = lazy(() => import("@/pages/AddConfig/AddConifg"))
 
 export const authRoutes = [
     {

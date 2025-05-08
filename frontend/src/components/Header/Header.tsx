@@ -6,19 +6,22 @@ import { ButtonStyleType } from "@/ui/Button/Button.props";
 import { useStore } from "@/hooks/store";
 import { useNavigate } from "react-router-dom";
 import { LOGIN_ROUTE, PANEL_ROUTE, REGISTER_ROUTE } from "@/utils/consts";
+import { observer } from "mobx-react";
+import { UserService } from "@/http/User";
 
-const Header: FC<HeaderProps> = () => {
+const Header: FC<HeaderProps> = observer(() => {
     const { userStore } = useStore();
     const navigate = useNavigate();
-    useEffect(() => {
-    }, [userStore]);
+    const logout = async () => {
+        
+    }
     return (
         <div className="w-full m-4">
             <div className={"flex items-center justify-end gap-4 mr-4"}>
                 <Button styleType={ButtonStyleType.submit} onClick={() => navigate(PANEL_ROUTE)}>Панель Управления</Button>
                 {userStore.IsAuth ? (
                     <div>
-                        <Button styleType={ButtonStyleType.submit}>Выйти</Button>
+                        <Button styleType={ButtonStyleType.submit} onClick={async () => await UserService.logout()}>Выйти</Button>
                     </div>
                 ) : (
                     <div className="flex gap-4 items-center">
@@ -29,7 +32,7 @@ const Header: FC<HeaderProps> = () => {
             </div>
         </div>
     );
-};
+})
 
 export default Header;
 

@@ -4,14 +4,15 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+        
         {
             "type": "go",
             "name": "debug main.go",
             "request": "launch",
             "mode": "auto",
             "args": [],
-            "program": "/home/pavelr/WebSiteArticles/backend/cmd/gateway/main.go",
-            "cwd": "/home/pavelr/WebSiteArticles/backend"
+            "program": "${workspaceFolder}/backend/cmd/auth/main.go",
+            "cwd": "${workspaceFolder}/backend"
         }
     ]
 }

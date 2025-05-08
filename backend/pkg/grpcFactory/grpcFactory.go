@@ -4,7 +4,6 @@ import (
 	"backend/pkg/config"
 	"backend/pkg/errors"
 	"context"
-	"time"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -28,7 +27,6 @@ func NewClient[T any](address string, logger *zap.Logger, cfg *config.Config, co
 		return nil, errors.ErrServiceUnavailable
 	}
 	client := constructor(conn)
-	context, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 
 	logger.Info("Successfully connected to Service")
 
@@ -37,8 +35,6 @@ func NewClient[T any](address string, logger *zap.Logger, cfg *config.Config, co
 		Cfg:        cfg,
 		Connection: conn,
 		Service:    client,
-		Ctx:        context,
-		Cancel:     cancel,
 	}, nil
 
 }

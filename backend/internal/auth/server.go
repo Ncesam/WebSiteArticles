@@ -138,16 +138,13 @@ func (s *AuthServer) Refresh(ctx context.Context, req *authpb.RefreshRequest) (*
 		return nil, status.Error(codes.Unauthenticated, "invalid refresh token")
 	}
 
-	if tokenType, ok := claims["type"].(string); !ok || tokenType != "refresh" {
-		return nil, status.Error(codes.Unauthenticated, "not a refresh token")
-	}
 
 	email, ok := claims["email"].(string)
 	if !ok {
 		return nil, status.Error(codes.Internal, "invalid token claims")
 	}
 
-	user, err := s.UserDataBase.GetUser(map[string]interface{}{"nickname": email})
+	user, err := s.UserDataBase.GetUser(map[string]interface{}{"email": email})
 	if err != nil {
 		s.logger.Error("User not found", zap.String("email", email), zap.Error(err))
 		return nil, status.Error(codes.NotFound, "user not found")
@@ -182,16 +179,12 @@ func (s *AuthServer) Me(ctx context.Context, req *authpb.GetMeRequest) (*authpb.
 		return nil, status.Error(codes.Unauthenticated, "invalid refresh token")
 	}
 
-	if tokenType, ok := claims["type"].(string); !ok || tokenType != "refresh" {
-		return nil, status.Error(codes.Unauthenticated, "not a refresh token")
-	}
-
 	email, ok := claims["email"].(string)
 	if !ok {
 		return nil, status.Error(codes.Internal, "invalid token claims")
 	}
 
-	user, err := s.UserDataBase.GetUser(map[string]interface{}{"nickname": email})
+	user, err := s.UserDataBase.GetUser(map[string]interface{}{"email": email})
 	if err != nil {
 		s.logger.Error("User not found", zap.String("email", email), zap.Error(err))
 		return nil, status.Error(codes.NotFound, "user not found")

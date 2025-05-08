@@ -4,8 +4,11 @@ import (
 	authPb "backend/generated/proto/auth"
 	"backend/internal/helpers"
 	"backend/pkg/config"
+	"backend/pkg/errors"
 	jwt "backend/pkg/security/JWT"
 	"backend/pkg/types"
+	"context"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -35,10 +38,12 @@ func Register(logger *zap.Logger, cfg *config.Config, clients *types.MapClients)
 			Nickname: form.Nickname,
 			Password: form.Password,
 		}
-
-		_, err := clients.Auth.Service.Register(clients.Auth.Ctx, registerRequest)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		defer cancel()
+		_, err := clients.Auth.Service.Register(ctx, registerRequest)
 		if err != nil {
 			helpers.HandleGrpcError(logger, c, err, "Failed to register user")
+			c.AbortWithStatusJSON(400, gin.H{"message": errors.ErrUserAlreadyExists.Message})
 			return
 		}
 
@@ -69,13 +74,15 @@ func Login(logger *zap.Logger, cfg *config.Config, clients *types.MapClients) gi
 			Nickname: form.Nickname,
 			Password: form.Password,
 		}
-
-		resp, err := clients.Auth.Service.Login(clients.Auth.Ctx, req)
+		// ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		// defer cancel()
+		resp, err := clients.Auth.Service.Login(context.Background(), req)
 		if err != nil {
 			helpers.HandleGrpcError(logger, c, err, "Login failed")
 			return
 		}
-
+		c.SetCookie("refresh_token", resp.RefreshToken, 0, "", "", true, true)
+		c.SetCookie("access_token", resp.AccessToken, 0, "", "", true, true)
 		c.JSON(200, resp)
 	}
 }
@@ -114,12 +121,15 @@ func Refresh(logger *zap.Logger, cfg *config.Config, clients *types.MapClients, 
 		refreshTokenRequest := &authPb.RefreshRequest{
 			RefreshToken: refreshToken,
 		}
-		resp, err := clients.Auth.Service.Refresh(clients.Auth.Ctx, refreshTokenRequest)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		defer cancel()
+		resp, err := clients.Auth.Service.Refresh(ctx, refreshTokenRequest)
 		if err != nil {
 			helpers.HandleGrpcError(logger, c, err, "Token refresh failed")
 			return
 		}
-
+		c.SetCookie("refresh_token", resp.RefreshToken, 0, "", "", true, true)
+		c.SetCookie("access_token", resp.AccessToken, 0, "", "", true, true)
 		c.JSON(200, resp)
 	}
 }
@@ -142,12 +152,15 @@ func Me(logger *zap.Logger, cfg *config.Config, clients *types.MapClients, authC
 		getUserRequest := &authPb.GetMeRequest{
 			RefreshToken: refreshToken,
 		}
-
-		resp, err := clients.Auth.Service.Me(clients.Auth.Ctx, getUserRequest)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		defer cancel()
+		resp, err := clients.Auth.Service.Me(ctx, getUserRequest)
 		if err != nil {
 			helpers.HandleGrpcError(logger, c, err, "Failed to get user data")
 			return
 		}
+		c.SetCookie("refresh_token", resp.RefreshToken, 0, "", "", true, true)
+		c.SetCookie("access_token", resp.AccessToken, 0, "", "", true, true)
 		c.JSON(200, resp)
 	}
 }

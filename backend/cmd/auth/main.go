@@ -39,6 +39,11 @@ func main() {
 
 	authController := jwt.New(loggerInstanse, cfg)
 	db := postgres.Connect(cfg, loggerInstanse)
+	err = db.Migrate()
+	if err != nil {
+		loggerInstanse.Error("Migration Fail", zap.Error(err))
+		return
+	}
 
 	server := grpc.NewServer()
 	authPb.RegisterAuthServiceServer(server, authServer.NewAuthServer(db, cfg, loggerInstanse, &authController))

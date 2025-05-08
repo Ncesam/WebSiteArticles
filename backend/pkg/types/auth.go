@@ -8,5 +8,5 @@ type LoginForm struct {
 type RegisterForm struct {
 	Email    string `json:"email" binding:"required,email"`
 	Nickname string `json:"nickname" binding:"required"`
-	Password string `json:"password" binding:"required, password_strength"`
+	Password string `json:"password" binding:"required"`
 }

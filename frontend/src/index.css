@@ -36,7 +36,10 @@ body {
     color: #A7B8B5;
 }
 
-.cdx-search-field__input, .cdx-search-field__input::placeholder, .ce-inline-tool-input, .ce-inline-tool-input::placeholder {
+.cdx-search-field__input,
+.cdx-search-field__input::placeholder,
+.ce-inline-tool-input,
+.ce-inline-tool-input::placeholder {
     color: #082D3A;
     font-weight: bold;
 }
@@ -47,8 +50,6 @@ body {
     color: #267491;
 }
 
-
-
 @keyframes slide-on-bottom {
     from {
         transform: translateY(40%);
@@ -56,5 +57,28 @@ body {
 
     to {
         transform: translateY(0);
+    }
+}
+
+
+
+.loader {
+    width: 48px;
+    height: 48px;
+    border: 5px solid #FFF;
+    border-bottom-color: transparent;
+    border-radius: 50%;
+    display: inline-block;
+    box-sizing: border-box;
+    animation: rotation 1s linear infinite;
+}
+
+@keyframes rotation {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
     }
 }

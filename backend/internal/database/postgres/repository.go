@@ -63,7 +63,7 @@ func (db *PostgresDatabase) AddUser(user *User) error {
 func (db *PostgresDatabase) GetUser(filters interface{}) (*User, error) {
 	var user User
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
 	// Логируем попытку запроса

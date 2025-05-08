@@ -35,6 +35,7 @@ func Connect(logger *zap.Logger, cfg *config.Config) (*MongoDatabase, error) {
 		return nil, fmt.Errorf("failed to connect to MongoDB: %w", err)
 	}
 	db := client.Database("Configs")
+	logger.Info("Mongo Connection started")
 	return &MongoDatabase{
 		logger: logger,
 		cfg:    cfg,
@@ -45,7 +46,7 @@ func Connect(logger *zap.Logger, cfg *config.Config) (*MongoDatabase, error) {
 }
 
 func (m *MongoDatabase) Disconnect() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
 	if err := m.client.Disconnect(ctx); err != nil {
@@ -58,7 +59,7 @@ func (m *MongoDatabase) Disconnect() error {
 }
 
 func (m *MongoDatabase) AddConfig(config *Config) (error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	collection := m.db.Collection("configs")
 
@@ -79,7 +80,7 @@ func (m *MongoDatabase) AddConfig(config *Config) (error) {
 }
 
 func (m *MongoDatabase) GetConfigs() ([]Config, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
 	collection := m.db.Collection("configs")
@@ -100,7 +101,7 @@ func (m *MongoDatabase) GetConfigs() ([]Config, error) {
 	return configs, nil
 }
 func (m *MongoDatabase) GetConfigByID(id primitive.ObjectID) (*Config, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
 	collection := m.db.Collection("configs")
@@ -120,7 +121,7 @@ func (m *MongoDatabase) GetConfigByID(id primitive.ObjectID) (*Config, error) {
 	return &config, nil
 }
 func (m *MongoDatabase) GetConfigWithFilter(filter interface{}) ([]Config, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
 	collection := m.db.Collection("configs")
@@ -144,7 +145,7 @@ func (m *MongoDatabase) GetConfigWithFilter(filter interface{}) ([]Config, error
 }
 
 func (m *MongoDatabase) DeleteConfig (filter interface{}) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	collection := m.db.Collection("configs")
 

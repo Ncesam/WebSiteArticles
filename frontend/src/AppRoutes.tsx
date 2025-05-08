@@ -4,32 +4,34 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import RootStore from "./stores/rootStore";
 import { LOGIN_ROUTE, PANEL_ROUTE } from "./utils/consts";
 import { authRoutes, primaryRoutes } from "./routes";
+import { observer} from "mobx-react";
 
 
-const AppRoutes: FC = () => {
-    const context: RootStore = useStore()
+const AppRoutes: FC = observer(() => {
+    const { userStore } = useStore()
     return (
-        <Suspense fallback={<div></div>}>
-            <Routes>
-                {context.userStore.IsAuth ? (
-                    <>
-                        {authRoutes.map(({ path, component }) => (
-                            <Route key={path} path={path} element={React.createElement(component)} />
-                        ))}
-                        <Route path="*" element={<Navigate to={LOGIN_ROUTE} />} />
-                    </>
-                ) : (
-                    <>
-                        {primaryRoutes.map(({ path, component }) => (
-                            <Route key={path} path={path} element={React.createElement(component)} />
-                        ))}
-                        <Route path="*" element={<Navigate to={PANEL_ROUTE} />} />
-                    </>
-                )}
-            </Routes>
+        <Suspense fallback={<div className="flex w-full h-full justify-center items-center"><span className="loader"></span></div>}>
+            {userStore.isLoading ? <div className="flex w-full h-full justify-center items-center"><span className="loader"></span></div> :
+                <Routes>
+                    {!userStore.IsAuth ? (
+                        <>
+                            {authRoutes.map(({ path, component }) => (
+                                <Route key={path} path={path} element={React.createElement(component)} />
+                            ))}
+                            <Route path="*" element={<Navigate to={LOGIN_ROUTE} replace />} />
+                        </>
+                    ) : (
+                        <>
+                            {primaryRoutes.map(({ path, component }) => (
+                                <Route key={path} path={path} element={React.createElement(component)} />
+                            ))}
+                            <Route path="*" element={<Navigate to={PANEL_ROUTE} replace />} />
+                        </>
+                    )}
+                </Routes>}
         </Suspense>
     )
-}
+})
 
 
 export default AppRoutes;

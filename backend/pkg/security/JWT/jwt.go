@@ -28,13 +28,13 @@ func (controller AuthController) CreateAccessToken(user types.UserInfo) (AccessT
 		"nickname": user.Nickname,
 		"email":    user.Email,
 		"sub":      user.Id,
-		"exp":      time.Now().Add(time.Duration(controller.cfg.AUTH.ACCESS.DURATION)).Unix(),
+		"exp":      time.Now().Add(time.Duration(controller.cfg.AUTH.ACCESS.DURATION) * time.Second).Unix(),
 		"iat":      time.Now().Unix(),
 	}
 	controller.logger.Debug("Create New JWT")
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	signed, err := token.SignedString(controller.cfg.AUTH.ACCESS.KEY)
+	signed, err := token.SignedString([]byte(controller.cfg.AUTH.ACCESS.KEY))
 	if err != nil {
 		controller.logger.Error("Error in crypting token")
 		return "", err
@@ -68,8 +68,7 @@ func (controller AuthController) Decrypt(accessToken AccessToken) (jwt.MapClaims
 		return nil, errors.New("token expired")
 	}
 
-	expTime := time.Unix(int64(exp), 0)
-	if !expTime.Before(time.Now()) {
+	if time.Now().Unix() > int64(exp){
 		controller.logger.Error("Token expired")
 		return nil, errors.New("token expired")
 	}
@@ -82,13 +81,13 @@ func (controller AuthController) CreateRefreshToken(user types.UserInfo) (Refres
 		"nickname": user.Nickname,
 		"email":    user.Email,
 		"sub":      user.Id,
-		"exp":      time.Now().Add(time.Duration(controller.cfg.AUTH.REFRESH.DURATION)).Unix(),
+		"exp":      time.Now().Add(time.Duration(controller.cfg.AUTH.REFRESH.DURATION) * time.Hour).Unix(),
 		"iat":      time.Now().Unix(),
 	}
 	controller.logger.Debug("Create New JWT")
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	signed, err := token.SignedString(controller.cfg.AUTH.REFRESH.KEY)
+	signed, err := token.SignedString([]byte(controller.cfg.AUTH.REFRESH.KEY))
 	if err != nil {
 		controller.logger.Error("Error in crypting token")
 		return "", err

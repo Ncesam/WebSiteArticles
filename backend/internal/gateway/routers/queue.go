@@ -8,6 +8,7 @@ import (
 	"backend/pkg/types"
 	"context"
 	"net/http"
+	"time"
 
 	jwt "backend/pkg/security/JWT"
 
@@ -15,7 +16,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
-
 
 // StartConfig godoc
 // @Summary     Запуск конфигурации генерации
@@ -49,12 +49,19 @@ func StartConfig(logger *zap.Logger, cfg *config.Config, clients *types.MapClien
 			c.AbortWithStatusJSON(errors.ErrInvalidCredentials.Code, gin.H{"message": errors.ErrInvalidCredentials.Message})
 			return
 		}
-		clients.Queue.Service.StartConfig(context.Background(), &queuePb.StartConfigRequest{
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		defer cancel()
+		_, err := clients.Queue.Service.StartConfig(ctx, &queuePb.StartConfigRequest{
 			ConfigId: body.ConfigId,
 			UserId: userId,
 			Prompt: body.Prompt,
 			Data: body.Data,
 		})
+		if err != nil {
+			helpers.HandleGrpcError(logger, c, err, "Fail to start config")
+			return
+		}
 		c.JSON(http.StatusOK, gin.H{"message": "Successfully"})
 	}
 }
+
