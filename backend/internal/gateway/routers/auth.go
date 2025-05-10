@@ -1,17 +1,18 @@
 package routers
 
 import (
+	"context"
+	"time"
+
+	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
+
 	authPb "backend/generated/proto/auth"
 	"backend/internal/helpers"
 	"backend/pkg/config"
 	"backend/pkg/errors"
 	jwt "backend/pkg/security/JWT"
 	"backend/pkg/types"
-	"context"
-	"time"
-
-	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
 )
 
 // Register godoc
@@ -142,15 +143,21 @@ func Refresh(logger *zap.Logger, cfg *config.Config, clients *types.MapClients, 
 // @Security     BearerAuth
 // @Success      200 {object} authPb.AuthResponse
 // @Failure      401 {object} map[string]string
-// @Router       /auth/me [post]
+// @Router       /auth/me [put]
 func Me(logger *zap.Logger, cfg *config.Config, clients *types.MapClients, authController *jwt.AuthController) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		refreshToken, ok := helpers.GetRefreshToken(logger, c)
+		claims, ok := helpers.CheckUser(logger, c, authController)
 		if !ok {
+			c.AbortWithStatusJSON(errors.ErrUnauthorized.Code, errors.ErrUnauthorized.Message)
+			return
+		}
+		email, ok := claims["email"].(string)
+		if !ok {
+			c.AbortWithStatusJSON(errors.ErrInvalidEmailFormat.Code, errors.ErrInvalidEmailFormat.Message)
 			return
 		}
 		getUserRequest := &authPb.GetMeRequest{
-			RefreshToken: refreshToken,
+			Email: email,
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 		defer cancel()

@@ -1,17 +1,18 @@
 package auth
 
 import (
+	"context"
+
+	"go.uber.org/zap"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	authpb "backend/generated/proto/auth"
 	"backend/internal/database/postgres"
 	"backend/pkg/config"
 	"backend/pkg/security"
 	jwt "backend/pkg/security/JWT"
 	"backend/pkg/types"
-	"context"
-
-	"go.uber.org/zap"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 type AuthServer struct {
@@ -63,7 +64,6 @@ func (s *AuthServer) Login(ctx context.Context, req *authpb.LoginRequest) (*auth
 	}, nil
 }
 
-// Register реализует AuthService.Register
 func (s *AuthServer) Register(ctx context.Context, req *authpb.RegisterRequest) (*authpb.AuthResponse, error) {
 	// 1. Валидация входных данных
 	if req.Nickname == "" || req.Email == "" || req.Password == "" {
@@ -124,7 +124,7 @@ func (s *AuthServer) Register(ctx context.Context, req *authpb.RegisterRequest) 
 	}, nil
 }
 
-// Refresh реализует AuthService.Refresh
+
 func (s *AuthServer) Refresh(ctx context.Context, req *authpb.RefreshRequest) (*authpb.AuthResponse, error) {
 	// 1. Валидация входного токена
 	if req.RefreshToken == "" {
@@ -137,7 +137,6 @@ func (s *AuthServer) Refresh(ctx context.Context, req *authpb.RefreshRequest) (*
 		s.logger.Debug("Invalid refresh token", zap.Error(err))
 		return nil, status.Error(codes.Unauthenticated, "invalid refresh token")
 	}
-
 
 	email, ok := claims["email"].(string)
 	if !ok {
@@ -170,23 +169,11 @@ func (s *AuthServer) Refresh(ctx context.Context, req *authpb.RefreshRequest) (*
 	}, nil
 }
 
-// Me реализует AuthService.Me
+
 func (s *AuthServer) Me(ctx context.Context, req *authpb.GetMeRequest) (*authpb.AuthResponse, error) {
-	// 2. Парсим и валидируем токен
-	claims, err := s.authController.Decrypt(req.RefreshToken)
+	user, err := s.UserDataBase.GetUser(map[string]interface{}{"email": req.email})
 	if err != nil {
-		s.logger.Debug("Invalid refresh token", zap.Error(err))
-		return nil, status.Error(codes.Unauthenticated, "invalid refresh token")
-	}
-
-	email, ok := claims["email"].(string)
-	if !ok {
-		return nil, status.Error(codes.Internal, "invalid token claims")
-	}
-
-	user, err := s.UserDataBase.GetUser(map[string]interface{}{"email": email})
-	if err != nil {
-		s.logger.Error("User not found", zap.String("email", email), zap.Error(err))
+		s.logger.Error("User not found", zap.String("email", req.email), zap.Error(err))
 		return nil, status.Error(codes.NotFound, "user not found")
 	}
 	accessToken, err := s.authController.CreateAccessToken(types.UserInfo{Id: int64(user.ID), Email: user.Email, Nickname: user.Nickname})

@@ -1,8 +1,6 @@
 package helpers
 
 import (
-	"backend/pkg/errors"
-	jwt "backend/pkg/security/JWT"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -10,6 +8,9 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"backend/pkg/errors"
+	jwt "backend/pkg/security/JWT"
 )
 
 func IsAdmin(logger *zap.Logger, c *gin.Context, authController *jwt.AuthController) bool {
@@ -151,3 +152,4 @@ func GetRefreshToken(logger *zap.Logger, c *gin.Context) (string, bool) {
 	logger.Info("Refresh token retrieved successfully")
 	return refreshToken, true
 }
+

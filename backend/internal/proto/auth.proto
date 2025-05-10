@@ -13,7 +13,7 @@ message RegisterRequest {
   string nickname = 2;
   string password = 3;
 }
-message GetMeRequest { string refreshToken = 1; }
+message GetMeRequest { string email = 1; }
 message RefreshRequest { string refreshToken = 1; }
 message AuthResponse {
   int64 status = 1;
