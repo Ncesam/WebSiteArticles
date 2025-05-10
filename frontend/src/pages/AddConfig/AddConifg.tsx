@@ -1,19 +1,34 @@
+import { ConfigService } from "@/http/Config";
+import { FormBotConfig } from "@/types/Config";
 import Button from "@/ui/Button/Button";
 import { ButtonStyleType } from "@/ui/Button/Button.props";
 import Card from "@/ui/Card/Card";
 import Input from "@/ui/Input/Input";
 import { InputStyleType, InputType } from "@/ui/Input/Input.props";
 import TextArea from "@/ui/TextArea/TextArea";
+import { PANEL_ROUTE } from "@/utils/consts";
 import { FC, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const AddConfig: FC = () => {
-    const [name, setName] = useState<string>();
-    const [promptText, setPromptText] = useState<string>();
-    const [delay, setDelay] = useState<number>();
+    const [name, setName] = useState<string>("");
+    const [prompt, setPrompt] = useState<string>("");
+    const [delay, setDelay] = useState<number>(10);
     const [emailAccount, setEmailAccount] = useState<string>();
     const [passwordAccount, setPasswordAccount] = useState<string>();
+    const navigate = useNavigate();
     const click = async () => {
-        
+        const config: FormBotConfig = {
+            delay: delay,
+            name: name,
+            prompt: prompt,
+            userId: 0
+        }
+        const [ok, data] = await ConfigService.addConfig(config)
+        if (!ok) {
+            console.error(data)
+        }
+        navigate(PANEL_ROUTE);
     }
 
     return (
@@ -37,7 +52,7 @@ const AddConfig: FC = () => {
                 <div className={" w-full h-full"}>
                     <Card title={"Промпт"} subtitle={"Введите промпт. Под переменные поставьте {name}. Учитывайте, что переменные берутся из ваших файлов."}>
                         <div className={"w-full h-5/6"}>
-                            <TextArea onChange={(e) => setPromptText(e.target.value)} />
+                            <TextArea onChange={(e) => setPrompt(e.target.value)} />
                         </div>
                     </Card>
                 </div>

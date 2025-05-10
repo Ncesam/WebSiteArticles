@@ -13,3 +13,11 @@ export interface FormBotConfig {
     prompt: string,
     delay: number
 }
+
+export interface StartConfig {
+    configId: number,
+    userId: number,
+    prompt: string,
+    data: string,
+}
+

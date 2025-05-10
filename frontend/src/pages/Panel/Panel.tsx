@@ -1,3 +1,4 @@
+import { ConfigService } from "@/http/Config";
 import { BotConfig } from "@/types/Config";
 import Button from "@/ui/Button/Button";
 import { ButtonStyleType } from "@/ui/Button/Button.props";
@@ -5,7 +6,7 @@ import Card from "@/ui/Card/Card";
 import FileInput from "@/ui/FileInput/FileInput";
 import SelectMenu from "@/ui/SelectMenu/SelectMenu";
 import { ADD_CONFIG_ROUTE } from "@/utils/consts";
-import { FC, useState } from "react";
+import { FC, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 
@@ -20,8 +21,13 @@ const Panel: FC = () => {
     const [file, setFile] = useState<File | null>();
     const [helperText, setHelperText] = useState<{ item: string, text: string }>();
     const startConfig = async () => {
-        console.log(selected)
+        console.log("start")
     }
+    useEffect(() => {
+        const fetchConfigs = async () => {
+            
+        }
+    })
     return (
         <div className={"w-full h-full flex justify-center items-center"}>
             <div className={"flex w-full h-full flex-col items-center gap-3"}>
