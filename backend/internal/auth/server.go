@@ -132,7 +132,7 @@ func (s *AuthServer) Refresh(ctx context.Context, req *authpb.RefreshRequest) (*
 	}
 
 	// 2. Парсинг и валидация refresh token
-	claims, err := s.authController.Decrypt(req.RefreshToken)
+	claims, err := s.authController.DecryptRefresh(req.RefreshToken)
 	if err != nil {
 		s.logger.Debug("Invalid refresh token", zap.Error(err))
 		return nil, status.Error(codes.Unauthenticated, "invalid refresh token")

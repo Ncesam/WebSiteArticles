@@ -42,10 +42,9 @@ func (controller AuthController) CreateAccessToken(user types.UserInfo) (AccessT
 
 	return AccessToken(signed), nil
 }
-
 func (controller AuthController) Decrypt(accessToken AccessToken) (jwt.MapClaims, error) {
 	token, err := jwt.Parse(string(accessToken), func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+		if token.Method != jwt.SigningMethodHS256 {
 			controller.logger.Error("Unexpected signing method")
 			return nil, errors.New("unexpected signing method")
 		}
@@ -75,7 +74,38 @@ func (controller AuthController) Decrypt(accessToken AccessToken) (jwt.MapClaims
 
 	return claims, nil
 }
+func (controller AuthController) DecryptRefresh(refreshToken RefreshToken) (jwt.MapClaims, error) {
+	token, err := jwt.Parse(string(refreshToken), func(token *jwt.Token) (interface{}, error) {
+		if token.Method != jwt.SigningMethodHS256 {
+			controller.logger.Error("Unexpected signing method")
+			return nil, errors.New("unexpected signing method")
+		}
+		return []byte(controller.cfg.AUTH.REFRESH.KEY), nil
+	})
 
+	if err != nil || !token.Valid {
+		controller.logger.Error("Token is invalid")
+		return nil, err
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		controller.logger.Error("Invalid claims type")
+		return nil, errors.New("invalid claims type")
+	}
+	exp, ok := claims["exp"].(float64)
+	if !ok {
+		controller.logger.Error("Token expired")
+		return nil, errors.New("token expired")
+	}
+
+	if time.Now().Unix() > int64(exp){
+		controller.logger.Error("Token expired")
+		return nil, errors.New("token expired")
+	}
+
+	return claims, nil
+}
 func (controller AuthController) CreateRefreshToken(user types.UserInfo) (RefreshToken, error) {
 	claims := jwt.MapClaims{
 		"nickname": user.Nickname,
