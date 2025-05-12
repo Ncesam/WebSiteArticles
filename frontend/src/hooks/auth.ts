@@ -2,22 +2,13 @@ import {useContext, useEffect, useState} from "react";
 import {$api} from "@/http/api";
 import {Context} from "@/index";
 import { useStore } from "./store";
+import { UserService } from "@/http/User";
 
 
 const useAuth = () => {
     useEffect(() => {
-        const refreshToken = async () => {
-            try {
-                console.log("Refresh token...");
-                await $api.post("/auth/refresh", {}, {withCredentials: true});
-            } catch (error) {
-                console.error("Ошибка обновления токена:", error);
-                window.location.href = "/login";
-            }
-        };
-
         const interval = setInterval(() => {
-            refreshToken();
+            UserService.refreshToken();
         }, 20 * 1000 * 60);
 
         return () => clearInterval(interval);
@@ -34,9 +25,10 @@ const useAutoLogin = () => {
         const checkAuth = async () => {
             try {
                 userStore.SetIsLoading(true)
-                const {status, data} = await $api.post("/auth/me", {}, {withCredentials: true});
+                await UserService.refreshToken()
+                const [ok, data] = await UserService.me()
 
-                if (status === 403) {
+                if (!ok) {
                     window.location.href = "/login";
                     return;
                 }
@@ -47,9 +39,7 @@ const useAutoLogin = () => {
                 console.log("error: ", e);
                 userStore.SetIsLoading(false);
             }
-
         };
-
         checkAuth();
     }, []);
 

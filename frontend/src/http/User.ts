@@ -42,4 +42,12 @@ export class UserService {
             return [false, data]
         }
     }
+    static async refreshToken(){
+        const {status, data} = await $api.post("/auth/refresh");
+        if (status === 200) {
+            return [true, data]
+        } else {
+            return [false, data]
+        }
+    };
 }
