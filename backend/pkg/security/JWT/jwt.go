@@ -1,13 +1,15 @@
 package jwt
 
 import (
-	"backend/pkg/config"
-	"backend/pkg/types"
+	"encoding/hex"
 	"errors"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"go.uber.org/zap"
+
+	"backend/pkg/config"
+	"backend/pkg/types"
 )
 
 type AccessToken = string
@@ -33,8 +35,13 @@ func (controller AuthController) CreateAccessToken(user types.UserInfo) (AccessT
 	}
 	controller.logger.Debug("Create New JWT")
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	signed, err := token.SignedString([]byte(controller.cfg.AUTH.ACCESS.KEY))
+	keyHex := controller.cfg.AUTH.ACCESS.KEY
+	keyBytes, err := hex.DecodeString(keyHex)
+	if err != nil {
+		controller.logger.Error("Failed to decode secret key")
+		return "", err
+	}
+	signed, err := token.SignedString(keyBytes)
 	if err != nil {
 		controller.logger.Error("Error in crypting token")
 		return "", err
@@ -43,13 +50,20 @@ func (controller AuthController) CreateAccessToken(user types.UserInfo) (AccessT
 	return AccessToken(signed), nil
 }
 func (controller AuthController) Decrypt(accessToken AccessToken) (jwt.MapClaims, error) {
-	token, err := jwt.Parse(string(accessToken), func(token *jwt.Token) (interface{}, error) {
-		if token.Method != jwt.SigningMethodHS256 {
-			controller.logger.Error("Unexpected signing method")
+	keyHex := controller.cfg.AUTH.ACCESS.KEY
+	keyBytes, err := hex.DecodeString(keyHex)
+	if err != nil {
+		controller.logger.Error("Failed to decode secret key")
+		return nil, err
+	}
+
+	token, err := jwt.Parse(accessToken, func(token *jwt.Token) (interface{}, error) {
+		if token.Method.Alg() != jwt.SigningMethodHS256.Alg() {
 			return nil, errors.New("unexpected signing method")
 		}
-		return []byte(controller.cfg.AUTH.ACCESS.KEY), nil
+		return keyBytes, nil
 	})
+
 
 	if err != nil || !token.Valid {
 		controller.logger.Error("Token is invalid")
@@ -75,12 +89,18 @@ func (controller AuthController) Decrypt(accessToken AccessToken) (jwt.MapClaims
 	return claims, nil
 }
 func (controller AuthController) DecryptRefresh(refreshToken RefreshToken) (jwt.MapClaims, error) {
-	token, err := jwt.Parse(string(refreshToken), func(token *jwt.Token) (interface{}, error) {
-		if token.Method != jwt.SigningMethodHS256 {
-			controller.logger.Error("Unexpected signing method")
+	keyHex := controller.cfg.AUTH.REFRESH.KEY
+	keyBytes, err := hex.DecodeString(keyHex)
+	if err != nil {
+		controller.logger.Error("Failed to decode secret key")
+		return nil, err
+	}
+
+	token, err := jwt.Parse(refreshToken, func(token *jwt.Token) (interface{}, error) {
+		if token.Method.Alg() != jwt.SigningMethodHS256.Alg() {
 			return nil, errors.New("unexpected signing method")
 		}
-		return []byte(controller.cfg.AUTH.REFRESH.KEY), nil
+		return keyBytes, nil
 	})
 
 	if err != nil || !token.Valid {
@@ -116,8 +136,13 @@ func (controller AuthController) CreateRefreshToken(user types.UserInfo) (Refres
 	}
 	controller.logger.Debug("Create New JWT")
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	signed, err := token.SignedString([]byte(controller.cfg.AUTH.REFRESH.KEY))
+	keyHex := controller.cfg.AUTH.ACCESS.KEY
+	keyBytes, err := hex.DecodeString(keyHex)
+	if err != nil {
+		controller.logger.Error("Failed to decode secret key")
+		return "", err
+	}
+	signed, err := token.SignedString(keyBytes)
 	if err != nil {
 		controller.logger.Error("Error in crypting token")
 		return "", err
