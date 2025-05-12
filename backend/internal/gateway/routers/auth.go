@@ -82,8 +82,8 @@ func Login(logger *zap.Logger, cfg *config.Config, clients *types.MapClients) gi
 			helpers.HandleGrpcError(logger, c, err, "Login failed")
 			return
 		}
-		c.SetCookie("refresh_token", resp.RefreshToken, 0, "", "", true, true)
-		c.SetCookie("access_token", resp.AccessToken, 0, "", "", true, true)
+		c.SetCookie("refresh_token", resp.RefreshToken, 24 * 30 * 3600, "/", "", false, true)
+		c.SetCookie("access_token", resp.AccessToken, 3600, "/", "", false, true)
 		c.JSON(200, resp)
 	}
 }
@@ -129,8 +129,8 @@ func Refresh(logger *zap.Logger, cfg *config.Config, clients *types.MapClients, 
 			helpers.HandleGrpcError(logger, c, err, "Token refresh failed")
 			return
 		}
-		c.SetCookie("refresh_token", resp.RefreshToken, 0, "", "", true, true)
-		c.SetCookie("access_token", resp.AccessToken, 0, "", "", true, true)
+		c.SetCookie("refresh_token", resp.RefreshToken, 24 * 30 * 3600, "/", "", false, true)
+		c.SetCookie("access_token", resp.AccessToken, 3600, "/", "", false, true)
 		c.JSON(200, resp)
 	}
 }
@@ -166,8 +166,8 @@ func Me(logger *zap.Logger, cfg *config.Config, clients *types.MapClients, authC
 			helpers.HandleGrpcError(logger, c, err, "Failed to get user data")
 			return
 		}
-		c.SetCookie("refresh_token", resp.RefreshToken, 0, "", "", true, true)
-		c.SetCookie("access_token", resp.AccessToken, 0, "", "", true, true)
+		c.SetCookie("refresh_token", resp.RefreshToken, 24 * 30 * 3600, "/", "", false, true)
+		c.SetCookie("access_token", resp.AccessToken, 3600, "/", "", false, true)
 		c.JSON(200, resp)
 	}
 }

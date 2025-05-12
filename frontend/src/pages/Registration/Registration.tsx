@@ -38,9 +38,7 @@ const Registration: FC<RegistrationProps> = ({ }) => {
         }
     };
     const register = async () => {
-        setIsLoading(true);
         const [ok, err] = await UserService.register(email, nickname, password);
-        setIsLoading(false);
         if (!ok) {
             validate(err)
             return
@@ -60,7 +58,7 @@ const Registration: FC<RegistrationProps> = ({ }) => {
                 <Input style={InputStyleType.login} helperText={errors?.password} error={errors?.password ? true : undefined} onChange={(e) => setPassword(e.target.value)} placeholder={"Пароль"} />
                 <Input style={InputStyleType.login} onChange={(e) => password === e.target.value ? setIsValid(false) : setIsValid(true)} helperText={isValid ? "Пароли не совпадают" : undefined} placeholder={"Повторите Пароль"} />
                 <div className={"flex items-center justify-between gap-2"}>
-                    <Button styleType={ButtonStyleType.submit} loading={isLoading} onClick={register} disabled={isValid}>Зарегистрироваться</Button>
+                    <Button styleType={ButtonStyleType.submit} onClick={register} disabled={isValid}>Зарегистрироваться</Button>
                 </div>
             </div>
         </div>

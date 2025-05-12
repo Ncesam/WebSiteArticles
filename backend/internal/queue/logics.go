@@ -32,8 +32,7 @@ func NewLogics(
 	requestClient *grpcfactory.Client[request.RequestServiceClient],
 ) *QueueLogics {
 	logger.Info("Create a QueueLogics")
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*10)
-	defer cancel()
+	ctx, _ := context.WithTimeout(context.Background(), time.Minute*10)
 
 	q := &QueueLogics{
 		logger:        logger,

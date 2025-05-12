@@ -26,7 +26,6 @@ type Client[T any] struct {
 func NewClient[T any](address string, logger *zap.Logger, cfg *config.Config, constructor GRPCClientConstructor[T]) (*Client[T], error) {
 	serviceConfig := `{
 		"methodConfig": [{
-		  "name": [{"service": "your.ServiceName"}],
 		  "retryPolicy": {
 			"maxAttempts": 4,
 			"initialBackoff": "0.5s",

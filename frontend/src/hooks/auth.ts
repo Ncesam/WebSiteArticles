@@ -34,7 +34,7 @@ const useAutoLogin = () => {
         const checkAuth = async () => {
             try {
                 userStore.SetIsLoading(true)
-                const {status, data} = await $api.post("/auth/me", {withCredentials: true});
+                const {status, data} = await $api.post("/auth/me", {}, {withCredentials: true});
 
                 if (status === 403) {
                     window.location.href = "/login";

@@ -171,9 +171,9 @@ func (s *AuthServer) Refresh(ctx context.Context, req *authpb.RefreshRequest) (*
 
 
 func (s *AuthServer) Me(ctx context.Context, req *authpb.GetMeRequest) (*authpb.AuthResponse, error) {
-	user, err := s.UserDataBase.GetUser(map[string]interface{}{"email": req.email})
+	user, err := s.UserDataBase.GetUser(map[string]interface{}{"email": req.Email})
 	if err != nil {
-		s.logger.Error("User not found", zap.String("email", req.email), zap.Error(err))
+		s.logger.Error("User not found", zap.String("email", req.Email), zap.Error(err))
 		return nil, status.Error(codes.NotFound, "user not found")
 	}
 	accessToken, err := s.authController.CreateAccessToken(types.UserInfo{Id: int64(user.ID), Email: user.Email, Nickname: user.Nickname})

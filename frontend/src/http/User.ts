@@ -27,7 +27,7 @@ export class UserService {
     }
 
     static async me() {
-        const {status, data} = await $api.get("/auth/me")
+        const {status, data} = await $api.put("/auth/me")
         if (status === 200) {
             return [true, data]
         } else {

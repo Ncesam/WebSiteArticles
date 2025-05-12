@@ -57,6 +57,9 @@ services:
       context: ./backend
       dockerfile: deploy/queue/Dockerfile
     container_name: queue_service
+    depends_on:
+      - request
+      - config
     ports:
       - "50003"
     networks:
@@ -67,6 +70,8 @@ services:
       context: ./backend
       dockerfile: deploy/request/Dockerfile
     container_name: request_service
+    depends_on:
+      - config
     ports:
       - "50004"
     networks:

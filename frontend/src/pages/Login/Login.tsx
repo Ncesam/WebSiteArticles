@@ -34,11 +34,8 @@ const Login: FC<LoginProps> = ({ }) => {
                 return true;
         }
     };
-    const [isLoading, setIsLoading] = useState<boolean>();
     const login = async () => {
-        setIsLoading(true)
         const [ok, data] = await UserService.login(nickname, password)
-        setIsLoading(false)
         if (!ok) {
             validate(data)
             return
@@ -64,7 +61,7 @@ const Login: FC<LoginProps> = ({ }) => {
                 <Input style={InputStyleType.login} helperText={errors.nickname} onChange={(e) => setNickname(e.target.value)} error={errors.nickname ? true : undefined} placeholder={"Логин"} />
                 <Input style={InputStyleType.login} helperText={errors.password} onChange={(e) => setPassword(e.target.value)} error={errors.password ? true : undefined} placeholder={"Пароль"} />
                 <div className={"flex items-center justify-between gap-2"}>
-                    <Button styleType={ButtonStyleType.submit} loading={isLoading} onClick={login}>Войти</Button>
+                    <Button styleType={ButtonStyleType.submit} onClick={login}>Войти</Button>
                 </div>
             </div>
         </div>
