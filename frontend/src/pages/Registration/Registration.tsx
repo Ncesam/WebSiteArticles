@@ -20,18 +20,24 @@ const Registration: FC<RegistrationProps> = ({ }) => {
     const validate = (data: any) => {
         const fieldErrors: { email?: string, nickname?: string, password?: string } = {};
         switch (data.message) {
-            case "Password is incorrect":
-                fieldErrors["password"] = "Пароль неправильный";
+            case "Fill fields":
+                fieldErrors["password"] = "Заполните";
+                fieldErrors["nickname"] = "Заполните";
+                fieldErrors["email"] = "Заполните";
                 setErrors(fieldErrors);
                 return false;
-            case "Nickname exists":
-                fieldErrors["nickname"] = "Пользователь c таким никнеймом существует";
+            case "Password not validate":
+                fieldErrors["password"] = "Длина пароля от 8 символов";
                 setErrors(fieldErrors);
                 return false;
-            case "Email exists":
+            case "email already exists":
                 fieldErrors['email'] = "Пользователь с такой почтой существует"
                 setErrors(fieldErrors);
                 return false
+            case "nickname already exists":
+                fieldErrors['nickname'] = "Пользователь с таким именем существует"
+                setErrors(fieldErrors);
+                return false;
             default:
                 setErrors({});
                 return true;
@@ -41,7 +47,7 @@ const Registration: FC<RegistrationProps> = ({ }) => {
         const [ok, err] = await UserService.register(email, nickname, password);
         if (!ok) {
             validate(err)
-            return
+            return;
         }
         navigate(LOGIN_ROUTE);
     }

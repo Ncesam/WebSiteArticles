@@ -21,6 +21,7 @@ type ConfigServer struct {
 }
 
 func NewConfigServer(logger *zap.Logger, cfg *config.Config, db *mongo.MongoDatabase) *ConfigServer {
+	logger.Info("Created Config Server")
 	return &ConfigServer{
 		logger: logger,
 		cfg:    cfg,
@@ -30,13 +31,14 @@ func NewConfigServer(logger *zap.Logger, cfg *config.Config, db *mongo.MongoData
 }
 
 func (s *ConfigServer) AddConfig(ctx context.Context, req *configPb.AddConfigRequest) (*configPb.Config, error) {
+	s.logger.Debug("Got config data", zap.Int64("user id", req.UserId))
 	doc := &mongo.Config{
-		UserId:          req.UserId,
-		Name:            req.Name,
-		Prompt:          req.Prompt,
-		Email:           req.Email,
-		Password:        req.Password,
-		Delay:           req.Delay,
+		UserId:   req.UserId,
+		Name:     req.Name,
+		Prompt:   req.Prompt,
+		Email:    req.Email,
+		Password: req.Password,
+		Delay:    req.Delay,
 	}
 
 	err := s.db.AddConfig(doc)
@@ -44,34 +46,37 @@ func (s *ConfigServer) AddConfig(ctx context.Context, req *configPb.AddConfigReq
 		s.logger.Error("Failed to insert config", zap.Error(err))
 		return nil, err
 	}
+	s.logger.Debug("Config added", zap.Int64("config id", doc.Id))
 	result := &configPb.Config{
-		Id:           doc.Id,
-		UserId:       doc.UserId,
-		Name:         doc.Name,
-		Prompt:       doc.Prompt,
-		Email:        doc.Email,
-		Password:     doc.Password,
-		Delay:        doc.Delay,
+		Id:       doc.Id,
+		UserId:   doc.UserId,
+		Name:     doc.Name,
+		Prompt:   doc.Prompt,
+		Email:    doc.Email,
+		Password: doc.Password,
+		Delay:    doc.Delay,
 	}
 	return result, nil
 }
 
 func (s *ConfigServer) GetConfigs(ctx context.Context, req *configPb.GetConfigsRequest) (*configPb.Configs, error) {
+	s.logger.Debug("Got user data", zap.Int64("user id", req.UserId))
 	configs, err := s.db.GetConfigWithFilter(bson.M{"userId": req.UserId})
 	if err != nil {
 		s.logger.Error("Failed to find configs", zap.Error(err))
 		return nil, err
 	}
+	s.logger.Debug("Got user configs", zap.Int64("user id", req.UserId))
 	var result []*configPb.Config
-	for i := range configs {
+	for _, config := range configs {
 		config := &configPb.Config{
-			Id:           configs[i].Id,
-			UserId:       configs[i].UserId,
-			Name:         configs[i].Name,
-			Prompt:       configs[i].Prompt,
-			Email:        configs[i].Email,
-			Password:     configs[i].Password,
-			Delay:        configs[i].Delay,
+			Id:       config.Id,
+			UserId:   config.UserId,
+			Name:     config.Name,
+			Prompt:   config.Prompt,
+			Email:    config.Email,
+			Password: config.Password,
+			Delay:    config.Delay,
 		}
 
 		result = append(result, config)
@@ -85,30 +90,34 @@ func (s *ConfigServer) GetConfigs(ctx context.Context, req *configPb.GetConfigsR
 }
 
 func (s *ConfigServer) DeleteConfig(ctx context.Context, req *configPb.DeleteConfigRequest) (*configPb.Empty, error) {
+	s.logger.Debug("Got config data", zap.Int64("config id", req.Id), zap.Int64("user id", req.UserId))
 	err := s.db.DeleteConfig(bson.M{"id": req.Id, "userId": req.UserId})
 	if err != nil {
 		s.logger.Error("Failed to delete config", zap.Error(err))
 		return nil, err
 	}
+	s.logger.Debug("Config is deleted", zap.Int64("user id", req.UserId))
 	return &configPb.Empty{}, nil
 }
 
 func (s *ConfigServer) GetConfig(ctx context.Context, req *configPb.GetConfigRequest) (*configPb.Config, error) {
+	s.logger.Debug("Got config data", zap.Int64("config id", req.ConfigId))
 	config, err := s.db.GetConfigByID(primitive.ObjectID{byte(req.ConfigId)})
 	if err != nil {
 		s.logger.Error("Failed to find configs", zap.Error(err))
 		return nil, err
 	}
+	s.logger.Debug("Got config", zap.Int64("config id", config.Id))
 	result := &configPb.Config{
-		Id: config.Id,
-		UserId: config.UserId,
-		Name: config.Name,
-		Prompt: config.Prompt,
-		Email: config.Email,
-		Password: config.Password,
-		Delay: config.Delay,
+		Id:              config.Id,
+		UserId:          config.UserId,
+		Name:            config.Name,
+		Prompt:          config.Prompt,
+		Email:           config.Email,
+		Password:        config.Password,
+		Delay:           config.Delay,
 		RefreshTokenDTF: config.RefreshTokenDTF,
-		RefreshTokenVC: config.RefreshTokenVC,
+		RefreshTokenVC:  config.RefreshTokenVC,
 	}
 
 	return result, nil

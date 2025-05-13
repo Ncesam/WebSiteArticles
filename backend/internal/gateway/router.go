@@ -11,9 +11,11 @@ import (
 )
 
 func RegisterAllRouters(router *gin.Engine, logger *zap.Logger, clients *types.MapClients, cfg *config.Config, authController *jwt.AuthController) {
+	logger.Info("Registering all routes")
 	registerAuthRouters(router, logger, clients, cfg, authController)
 	registerQueueRouters(router, logger, clients, cfg, authController)
 	registerConfigRouters(router, logger, clients, cfg, authController)
+	logger.Info("All routes registered successfully")
 }
 
 func registerAuthRouters(router *gin.Engine, logger *zap.Logger, clients *types.MapClients, cfg *config.Config, authController *jwt.AuthController) {
@@ -23,17 +25,19 @@ func registerAuthRouters(router *gin.Engine, logger *zap.Logger, clients *types.
 	authGroup.POST("/refresh", routers.Refresh(logger, cfg, clients, authController))
 	authGroup.PUT("/me", routers.Me(logger, cfg, clients, authController))
 	authGroup.POST("/logout", routers.Logout(logger, cfg))
-	logger.Info("Auth routes registered")
+	logger.Info("Auth routes registered", zap.String("route", "/api/auth"))
 }
+
 func registerConfigRouters(router *gin.Engine, logger *zap.Logger, clients *types.MapClients, cfg *config.Config, authController *jwt.AuthController) {
 	configGroup := router.Group("/api/config")
 	configGroup.GET("/", routers.GetConfigs(logger, cfg, authController, clients))
 	configGroup.POST("/", routers.AddConfig(logger, cfg, authController, clients))
-	logger.Info("Config routes registered")
+	logger.Info("Config routes registered", zap.String("route", "/api/config"))
 }
 
 func registerQueueRouters(router *gin.Engine, logger *zap.Logger, clients *types.MapClients, cfg *config.Config, authController *jwt.AuthController) {
 	queueGroup := router.Group("/api/queue")
 	queueGroup.POST("/", routers.StartConfig(logger, cfg, clients, authController))
-	logger.Info("Queue routes registered")
+	logger.Info("Queue routes registered", zap.String("route", "/api/queue"))
 }
+

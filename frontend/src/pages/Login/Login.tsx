@@ -21,7 +21,7 @@ const Login: FC<LoginProps> = ({ }) => {
     const validate = (data: any) => {
         const fieldErrors: { nickname?: string, password?: string } = {};
         switch (data.message) {
-            case "Password is incorrect":
+            case "Password is invalid":
                 fieldErrors["password"] = "Пароль неправильный";
                 setErrors(fieldErrors);
                 return false;

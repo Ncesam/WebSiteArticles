@@ -58,11 +58,12 @@ func (m *MongoDatabase) Disconnect() error {
 	return nil
 }
 
-func (m *MongoDatabase) AddConfig(config *Config) (error) {
+func (m *MongoDatabase) AddConfig(config *Config) error {
+	m.logger.Debug("Got config data", zap.String("config name", config.Name), zap.Int64("user id", config.UserId))
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	collection := m.db.Collection("configs")
-
+	m.logger.Debug("Got collection configs")
 	result, err := collection.InsertOne(ctx, config)
 	if err != nil {
 		m.logger.Error("Failed to insert config",
@@ -74,8 +75,7 @@ func (m *MongoDatabase) AddConfig(config *Config) (error) {
 		config.Id = oid
 	}
 
-	m.logger.Debug("Config successfully added",
-		zap.Any("config", config))
+	m.logger.Debug("Config successfully added", zap.Int64("config id", config.Id))
 	return nil
 }
 
@@ -84,7 +84,7 @@ func (m *MongoDatabase) GetConfigs() ([]Config, error) {
 	defer cancel()
 
 	collection := m.db.Collection("configs")
-
+	m.logger.Debug("Got collection config")
 	cursor, err := collection.Find(ctx, bson.M{})
 	if err != nil {
 		m.logger.Error("Failed to find configs", zap.Error(err))
@@ -97,40 +97,43 @@ func (m *MongoDatabase) GetConfigs() ([]Config, error) {
 		m.logger.Error("Failed to decode configs", zap.Error(err))
 		return nil, fmt.Errorf("failed to decode configs: %w", err)
 	}
-
+	m.logger.Debug("Got all configs")
 	return configs, nil
 }
 func (m *MongoDatabase) GetConfigByID(id primitive.ObjectID) (*Config, error) {
+	m.logger.Debug("Getting config by ID", zap.String("id", id.Hex()))
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
 	collection := m.db.Collection("configs")
+	m.logger.Debug("Got collection configs")
 
 	var config Config
 	err := collection.FindOne(ctx, bson.M{"_id": id}).Decode(&config)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
+			m.logger.Warn("Config not found", zap.String("id", id.Hex()))
 			return nil, nil
 		}
-		m.logger.Error("Failed to get config",
-			zap.Error(err),
-			zap.String("id", id.Hex()))
+		m.logger.Error("Failed to get config", zap.Error(err), zap.String("id", id.Hex()))
 		return nil, fmt.Errorf("failed to get config: %w", err)
 	}
 
+	m.logger.Debug("Config successfully fetched", zap.String("id", id.Hex()))
 	return &config, nil
 }
+
 func (m *MongoDatabase) GetConfigWithFilter(filter interface{}) ([]Config, error) {
+	m.logger.Debug("Getting configs with filter", zap.Any("filter", filter))
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
 	collection := m.db.Collection("configs")
+	m.logger.Debug("Got collection configs")
 
 	cursor, err := collection.Find(ctx, filter)
 	if err != nil {
-		m.logger.Error("Failed to find configs with filter",
-			zap.Error(err),
-			zap.Any("filter", filter))
+		m.logger.Error("Failed to find configs with filter", zap.Error(err), zap.Any("filter", filter))
 		return nil, fmt.Errorf("failed to find configs with filter: %w", err)
 	}
 	defer cursor.Close(ctx)
@@ -141,18 +144,24 @@ func (m *MongoDatabase) GetConfigWithFilter(filter interface{}) ([]Config, error
 		return nil, fmt.Errorf("failed to decode configs: %w", err)
 	}
 
+	m.logger.Debug("Configs fetched with filter", zap.Int("count", len(configs)))
 	return configs, nil
 }
 
-func (m *MongoDatabase) DeleteConfig (filter interface{}) error {
+func (m *MongoDatabase) DeleteConfig(filter interface{}) error {
+	m.logger.Debug("Deleting config", zap.Any("filter", filter))
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
-	collection := m.db.Collection("configs")
 
-	_, err := collection.DeleteOne(ctx, filter)
+	collection := m.db.Collection("configs")
+	m.logger.Debug("Got collection configs")
+
+	result, err := collection.DeleteOne(ctx, filter)
 	if err != nil {
-		m.logger.Error("Failed to delete config", zap.Error(err))
+		m.logger.Error("Failed to delete config", zap.Error(err), zap.Any("filter", filter))
 		return err
 	}
-	return nil;
+
+	m.logger.Debug("Config deletion result", zap.Int64("deletedCount", result.DeletedCount))
+	return nil
 }

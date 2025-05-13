@@ -121,11 +121,11 @@ func HandleGrpcError(logger *zap.Logger, c *gin.Context, err error, fallbackMess
 	case codes.NotFound:
 		c.AbortWithStatusJSON(errors.ErrNotFound.Code, gin.H{"message": fallbackMessage})
 	case codes.PermissionDenied:
-		c.AbortWithStatusJSON(errors.ErrPermissionDenied.Code, gin.H{"message": "permission denied"})
+		c.AbortWithStatusJSON(errors.ErrPermissionDenied.Code, gin.H{"message": "Permission denied"})
 	case codes.Unauthenticated:
-		c.AbortWithStatusJSON(errors.ErrNotAuthed.Code, gin.H{"message": "unauthenticated"})
+		c.AbortWithStatusJSON(errors.ErrNotAuthed.Code, gin.H{"message": "Unauthenticated"})
 	default:
-		c.AbortWithStatusJSON(errors.ErrInternalServer.Code, gin.H{"message": "internal server error"})
+		c.AbortWithStatusJSON(errors.ErrInternalServer.Code, gin.H{"message": "Internal server error"})
 	}
 }
 

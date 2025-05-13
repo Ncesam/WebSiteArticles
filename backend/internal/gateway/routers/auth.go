@@ -6,6 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	authPb "backend/generated/proto/auth"
 	"backend/internal/helpers"
@@ -43,8 +45,22 @@ func Register(logger *zap.Logger, cfg *config.Config, clients *types.MapClients)
 		defer cancel()
 		_, err := clients.Auth.Service.Register(ctx, registerRequest)
 		if err != nil {
-			helpers.HandleGrpcError(logger, c, err, "Failed to register user")
-			c.AbortWithStatusJSON(400, gin.H{"message": errors.ErrUserAlreadyExists.Message})
+			grpcErr := status.Convert(err)
+			if grpcErr.Code() == codes.InvalidArgument {
+				if grpcErr.Message() == "nickname, email and password are required" {
+					c.AbortWithStatusJSON(errors.ErrInvalidCredentials.Code, gin.H{"message": "Fill fields"})
+				} else if grpcErr.Message() == "password must be at least 8 characters" {
+					c.AbortWithStatusJSON(errors.ErrInvalidCredentials.Code, gin.H{"message": "Password not validate"})
+				}
+			} else if grpcErr.Code() == codes.AlreadyExists {
+				if grpcErr.Message() == "user with this email already exists" {
+					c.AbortWithStatusJSON(errors.ErrUserAlreadyExists.Code, gin.H{"message": "email already exists"})
+				} else if grpcErr.Message() == "user with this nickname already exists" {
+					c.AbortWithStatusJSON(errors.ErrUserAlreadyExists.Code, gin.H{"message": "nickname already exists"})
+				}
+			} else {
+				helpers.HandleGrpcError(logger, c, err, "Failed to register user")
+			}
 			return
 		}
 
@@ -75,14 +91,16 @@ func Login(logger *zap.Logger, cfg *config.Config, clients *types.MapClients) gi
 			Nickname: form.Nickname,
 			Password: form.Password,
 		}
-		// ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-		// defer cancel()
 		resp, err := clients.Auth.Service.Login(context.Background(), req)
 		if err != nil {
-			helpers.HandleGrpcError(logger, c, err, "Login failed")
+			if status.Code(err) == codes.Unauthenticated {
+				c.AbortWithStatusJSON(errors.ErrPermissionDenied.Code, gin.H{"message": "Password is invalid"})
+			} else {
+				helpers.HandleGrpcError(logger, c, err, "User not found")
+			}
 			return
 		}
-		c.SetCookie("refresh_token", resp.RefreshToken, 24 * 30 * 3600, "/", "", false, true)
+		c.SetCookie("refresh_token", resp.RefreshToken, 24*30*3600, "/", "", false, true)
 		c.SetCookie("access_token", resp.AccessToken, 3600, "/", "", false, true)
 		c.JSON(200, resp)
 	}
@@ -126,10 +144,21 @@ func Refresh(logger *zap.Logger, cfg *config.Config, clients *types.MapClients, 
 		defer cancel()
 		resp, err := clients.Auth.Service.Refresh(ctx, refreshTokenRequest)
 		if err != nil {
-			helpers.HandleGrpcError(logger, c, err, "Token refresh failed")
+			grpcErr := status.Convert(err)
+			if grpcErr.Code() == codes.InvalidArgument {
+				if grpcErr.Message() == "refresh token is required" {
+					c.AbortWithStatusJSON(errors.ErrInternalServer.Code, gin.H{"message": "refresh token is required"})
+				}
+			} else if grpcErr.Code() == codes.Unauthenticated {
+				if grpcErr.Message() == "invalid refresh token" {
+					c.AbortWithStatusJSON(errors.ErrPermissionDenied.Code, gin.H{"message": "refresh token is invaild"})
+				}
+			} else {
+				helpers.HandleGrpcError(logger, c, err, "User not found")
+			}
 			return
 		}
-		c.SetCookie("refresh_token", resp.RefreshToken, 24 * 30 * 3600, "/", "", false, true)
+		c.SetCookie("refresh_token", resp.RefreshToken, 24*30*3600, "/", "", false, true)
 		c.SetCookie("access_token", resp.AccessToken, 3600, "/", "", false, true)
 		c.JSON(200, resp)
 	}
@@ -163,10 +192,10 @@ func Me(logger *zap.Logger, cfg *config.Config, clients *types.MapClients, authC
 		defer cancel()
 		resp, err := clients.Auth.Service.Me(ctx, getUserRequest)
 		if err != nil {
-			helpers.HandleGrpcError(logger, c, err, "Failed to get user data")
+			helpers.HandleGrpcError(logger, c, err, "User not found")
 			return
 		}
-		c.SetCookie("refresh_token", resp.RefreshToken, 24 * 30 * 3600, "/", "", false, true)
+		c.SetCookie("refresh_token", resp.RefreshToken, 24*30*3600, "/", "", false, true)
 		c.SetCookie("access_token", resp.AccessToken, 3600, "/", "", false, true)
 		c.JSON(200, resp)
 	}

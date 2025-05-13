@@ -24,22 +24,22 @@ type RequestServer struct {
 	requestPb.UnimplementedRequestServiceServer
 	logger        *zap.Logger
 	api           *http.Client
-	cfg			  *config.Config
-	openaiClient *openai.Client
+	cfg           *config.Config
+	openaiClient  *openai.Client
 	configClient  *grpcfactory.Client[configPb.ConfigServiceClient]
 	dtfAPIBaseURL string
 	vcAPIBaseURL  string
 }
 
-
 func NewRequestServer(logger *zap.Logger, cfg *config.Config, configClient *grpcfactory.Client[configPb.ConfigServiceClient]) *RequestServer {
 	api := http.Client{}
 	client := openai.NewClient(cfg.OPEN_AI_KEY)
+	logger.Info("Created Request Server")
 	return &RequestServer{
 		logger:        logger,
 		cfg:           cfg,
 		api:           &api,
-		openaiClient: client,
+		openaiClient:  client,
 		configClient:  configClient,
 		dtfAPIBaseURL: "https://api.dtf.ru",
 		vcAPIBaseURL:  "https://api.vc.ru",
@@ -47,35 +47,53 @@ func NewRequestServer(logger *zap.Logger, cfg *config.Config, configClient *grpc
 }
 
 func (s *RequestServer) SendArticle(ctx context.Context, req *requestPb.SendArticleRequest) (*requestPb.Empty, error) {
-	s.logger.Info("SendArticle", zap.Any("website", req.WebSite), zap.String("title", req.Entry.Title))
+	s.logger.Debug("SendArticle request received",
+		zap.String("title", req.Entry.Title),
+		zap.Int64("config_id", req.ConfigId),
+		zap.String("website", req.WebSite.String()),
+	)
+
 	switch req.WebSite {
 	case requestPb.WebSite_DTF:
+		s.logger.Debug("Routing to DTF")
 		return s.sendToSite(ctx, req, s.dtfAPIBaseURL)
+
 	case requestPb.WebSite_VC_RU:
+		s.logger.Debug("Routing to VC.ru")
 		return s.sendToSite(ctx, req, s.vcAPIBaseURL)
+
 	default:
+		s.logger.Warn("Unsupported website value", zap.Int32("website_enum_value", int32(req.WebSite)))
 		return nil, fmt.Errorf("unsupported website: %v", req.WebSite)
 	}
 }
+
 func (s *RequestServer) sendToSite(ctx context.Context, req *requestPb.SendArticleRequest, baseURL string) (*requestPb.Empty, error) {
+	s.logger.Info("Sending article", zap.Any("website", req.WebSite), zap.String("title", req.Entry.Title))
+
 	token, err := s.fetchToken(ctx, req.ConfigId, baseURL)
 	if err != nil {
+		s.logger.Error("Failed to fetch token", zap.Error(err), zap.Int64("config_id", req.ConfigId), zap.Any("website", req.WebSite))
 		return nil, err
 	}
 
 	subsiteID, err := s.fetchSubsite(ctx, token, baseURL)
 	if err != nil {
+		s.logger.Error("Failed to fetch subsite", zap.Error(err), zap.Any("website", req.WebSite))
 		return nil, err
 	}
 
+	s.logger.Info("Successfully fetched subsite ID", zap.Int64("subsite_id", subsiteID))
 	return s.postEntry(ctx, token, subsiteID, req.Entry, baseURL)
 }
 
 func (s *RequestServer) fetchToken(ctx context.Context, configID int64, baseURL string) (string, error) {
+	s.logger.Info("Fetching token", zap.Int64("config_id", configID), zap.String("base_url", baseURL))
+
 	// 1) Получаем refreshToken из конфига
 	cfg, err := s.configClient.Service.GetConfig(ctx, &configPb.GetConfigRequest{ConfigId: configID})
 	if err != nil {
-		s.logger.Error("GetConfig failed", zap.Error(err))
+		s.logger.Error("GetConfig failed", zap.Error(err), zap.Int64("config_id", configID))
 		return "", err
 	}
 
@@ -98,7 +116,7 @@ func (s *RequestServer) fetchToken(ctx context.Context, configID int64, baseURL 
 
 	resp, err := s.api.Do(httpReq)
 	if err != nil {
-		s.logger.Error("Token request failed", zap.Error(err))
+		s.logger.Error("Token request failed", zap.Error(err), zap.Int64("config_id", configID), zap.String("base_url", baseURL))
 		return "", err
 	}
 	defer resp.Body.Close()
@@ -110,56 +128,69 @@ func (s *RequestServer) fetchToken(ctx context.Context, configID int64, baseURL 
 	}
 	body, _ := io.ReadAll(resp.Body)
 	if err := json.Unmarshal(body, &out); err != nil {
-		s.logger.Error("Failed to parse token response", zap.Error(err))
+		s.logger.Error("Failed to parse token response", zap.Error(err), zap.Int64("config_id", configID), zap.String("base_url", baseURL))
 		return "", errors.ErrInternalServer
 	}
+	s.logger.Info("Successfully fetched token", zap.String("access_token", out.Data.AccessToken))
 	return out.Data.AccessToken, nil
 }
 
 func (s *RequestServer) fetchSubsite(ctx context.Context, accessToken, baseURL string) (int64, error) {
 	endpoint := fmt.Sprintf("%s/v2.1/subsite/me", baseURL)
-	httpReq, _ := http.NewRequestWithContext(ctx, "GET", endpoint, nil)
+	s.logger.Info("Fetching subsite ID", zap.String("endpoint", endpoint))
+
+	httpReq, err := http.NewRequestWithContext(ctx, "GET", endpoint, nil)
+	if err != nil {
+		s.logger.Error("Failed to create HTTP request for subsite", zap.Error(err), zap.String("endpoint", endpoint))
+		return 0, errors.ErrInternalServer
+	}
 	httpReq.Header.Set("jwtauthorization", "Bearer "+accessToken)
 
 	resp, err := s.api.Do(httpReq)
 	if err != nil {
-		s.logger.Error("Subsite request failed", zap.Error(err))
+		s.logger.Error("Subsite request failed", zap.Error(err), zap.String("endpoint", endpoint))
 		return 0, err
 	}
 	defer resp.Body.Close()
+
+	s.logger.Info("Subsite response received", zap.Int("status_code", resp.StatusCode))
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		s.logger.Error("Failed to read subsite response body", zap.Error(err))
+		return 0, errors.ErrInternalServer
+	}
 
 	var out struct {
 		Result struct {
 			ID int64 `json:"id"`
 		} `json:"result"`
 	}
-	body, _ := io.ReadAll(resp.Body)
 	if err := json.Unmarshal(body, &out); err != nil {
-		s.logger.Error("Failed to parse subsite response", zap.Error(err))
+		s.logger.Error("Failed to parse subsite response JSON", zap.Error(err), zap.ByteString("body", body))
 		return 0, errors.ErrInternalServer
 	}
+
+	if out.Result.ID == 0 {
+		s.logger.Error("Subsite ID is missing or zero in response", zap.ByteString("body", body))
+		return 0, errors.ErrInternalServer
+	}
+
+	s.logger.Info("Successfully fetched subsite ID", zap.Int64("subsite_id", out.Result.ID))
 	return out.Result.ID, nil
 }
 
-func (s *RequestServer) postEntry(
-	ctx context.Context,
-	accessToken string,
-	subsiteID int64,
-	entry *requestPb.EntryRequest, // замените на реальный тип вашего entry
-	baseURL string,
-) (*requestPb.Empty, error) {
-	// 1) Встраиваем subsiteID в тело
-	//    предполагаем, что entry содержит поле SubsiteId int32
-	entry.SubsiteId = int32(subsiteID)
+func (s *RequestServer) postEntry(ctx context.Context, accessToken string, subsiteID int64, entry *requestPb.EntryRequest, baseURL string) (*requestPb.Empty, error) {
+	s.logger.Info("Posting entry", zap.Int64("subsite_id", subsiteID), zap.String("base_url", baseURL), zap.String("entry_title", entry.Title))
 
-	// 2) Упаковываем в JSON
+	entry.SubsiteId = int32(subsiteID)
 	bodyMap := map[string]any{"entry": entry}
 	jsonBytes, err := json.Marshal(bodyMap)
 	if err != nil {
+		s.logger.Error("Failed to marshal entry", zap.Error(err))
 		return nil, err
 	}
 
-	// 3) Multipart-запрос
 	buf := &bytes.Buffer{}
 	w := multipart.NewWriter(buf)
 	_ = w.WriteField("entry", string(jsonBytes))
@@ -170,10 +201,13 @@ func (s *RequestServer) postEntry(
 	httpReq.Header.Set("jwtauthorization", "Bearer "+accessToken)
 	httpReq.Header.Set("Content-Type", w.FormDataContentType())
 
-	if _, err := s.api.Do(httpReq); err != nil {
-		s.logger.Error("Post entry failed", zap.Error(err))
+	_, err = s.api.Do(httpReq)
+	if err != nil {
+		s.logger.Error("Post entry failed", zap.Error(err), zap.String("base_url", baseURL), zap.Int64("subsite_id", subsiteID))
 		return nil, err
 	}
+
+	s.logger.Info("Successfully posted entry", zap.String("base_url", baseURL), zap.Int64("subsite_id", subsiteID))
 	return &requestPb.Empty{}, nil
 }
 
@@ -184,133 +218,138 @@ func (s *RequestServer) UploadMedia(ctx context.Context, req *requestPb.UploadMe
 	return &requestPb.UploadMediaResponse{UID: "mocked-uid"}, nil
 }
 
-// GenerateText — генерация текста на основе промпта (можно подключить GPT)
 func (s *RequestServer) GenerateText(ctx context.Context, req *requestPb.GenerateTextRequest) (*requestPb.Text, error) {
 	s.logger.Info("Generating text from prompt", zap.String("prompt", req.Prompt))
 
-    // 1) Собираем сообщение для Chat API
-    systemMsg := openai.ChatCompletionMessage{
-        Role:    openai.ChatMessageRoleSystem,
-        Content: "Ты — помощник, генерирующий структуру статьи для публикации.",
-    }
-    userMsg := openai.ChatCompletionMessage{
-        Role:    openai.ChatMessageRoleUser,
-        Content: req.Prompt,
-    }
+	systemMsg := openai.ChatCompletionMessage{
+		Role:    openai.ChatMessageRoleSystem,
+		Content: "Ты — помощник, генерирующий статью для публикации.",
+	}
+	userMsg := openai.ChatCompletionMessage{
+		Role:    openai.ChatMessageRoleUser,
+		Content: req.Prompt,
+	}
 
-    // 2) Отправляем запрос
-    resp, err := s.openaiClient.CreateChatCompletion(
-        ctx,
-        openai.ChatCompletionRequest{
-            Model:     openai.GPT3Dot5Turbo, // или "gpt-4"
-            Messages:  []openai.ChatCompletionMessage{systemMsg, userMsg},
-            MaxTokens: 1024,
-            Temperature: 0.7,
-        },
-    )
-    if err != nil {
-        s.logger.Error("OpenAI request failed", zap.Error(err))
-        return nil, err
-    }
+	resp, err := s.openaiClient.CreateChatCompletion(
+		ctx,
+		openai.ChatCompletionRequest{
+			Model:       openai.GPT3Dot5Turbo,
+			Messages:    []openai.ChatCompletionMessage{systemMsg, userMsg},
+			MaxTokens:   1024,
+			Temperature: 0.7,
+		},
+	)
+	if err != nil {
+		s.logger.Error("OpenAI request failed", zap.Error(err), zap.String("prompt", req.Prompt))
+		return nil, err
+	}
 
-    // 3) Парсим ответ в блоки — например, ожидая, что ассистент вернёт JSON-массив блоков
-    //    или просто разбиваем на параграфы
-    text := resp.Choices[0].Message.Content
+	text := resp.Choices[0].Message.Content
+	paragraphs := strings.Split(text, "\n\n")
+	blocks := make([]*requestPb.Block, 0, len(paragraphs))
+	for _, p := range paragraphs {
+		if trimmed := strings.TrimSpace(p); trimmed != "" {
+			blocks = append(blocks, &requestPb.Block{
+				Type: "paragraph",
+				Data: &requestPb.BlockData{
+					Text: trimmed,
+				},
+			})
+		}
+	}
 
-    // Простая логика: каждый абзац — отдельный блок
-    paragraphs := strings.Split(text, "\n\n")
-    blocks := make([]*requestPb.Block, 0, len(paragraphs))
-    for _, p := range paragraphs {
-        if trimmed := strings.TrimSpace(p); trimmed != "" {
-            blocks = append(blocks, &requestPb.Block{
-                Type: "paragraph",
-                Data: &requestPb.BlockData{
-                    Text: trimmed,
-                },
-            })
-        }
-    }
-
-    return &requestPb.Text{
-        Title:  paragraphs[0],
-        Blocks: blocks,
-    }, nil
+	s.logger.Info("Successfully generated text", zap.String("title", paragraphs[0]))
+	return &requestPb.Text{
+		Title:  paragraphs[0],
+		Blocks: blocks,
+	}, nil
 }
 
 func (s *RequestServer) fetchRefreshToken(ctx context.Context, req *requestPb.GetRefreshTokenRequest, baseURL string) (string, error) {
-    s.logger.Info("Fetching refresh token", zap.String("email", req.Email), zap.String("baseURL", baseURL))
+	s.logger.Info("Starting to fetch refresh token", zap.String("email", req.Email), zap.String("baseURL", baseURL))
 
-    if req.Email == "" || req.Password == "" {
-        return "", errors.ErrInvalidCredentials
-    }
+	if req.Email == "" || req.Password == "" {
+		s.logger.Warn("Email or password is empty", zap.String("email", req.Email))
+		return "", errors.ErrInvalidCredentials
+	}
 
-    // Собираем multipart payload
-    buf := &bytes.Buffer{}
-    w := multipart.NewWriter(buf)
-    _ = w.WriteField("email", req.Email)
-    _ = w.WriteField("password", req.Password)
-    if err := w.Close(); err != nil {
-        s.logger.Error("Failed to write form fields", zap.Error(err))
-        return "", errors.ErrInvalidCredentials
-    }
+	// Собираем multipart payload
+	buf := &bytes.Buffer{}
+	w := multipart.NewWriter(buf)
+	_ = w.WriteField("email", req.Email)
+	_ = w.WriteField("password", req.Password)
+	if err := w.Close(); err != nil {
+		s.logger.Error("Failed to close multipart writer", zap.Error(err))
+		return "", errors.ErrInvalidCredentials
+	}
 
-    // Формируем запрос
-    endpoint := fmt.Sprintf("%s/v3.4/auth/email/login", baseURL)
-    httpReq, err := http.NewRequestWithContext(ctx, "POST", endpoint, buf)
-    if err != nil {
-        s.logger.Error("Failed to create http request", zap.Error(err))
-        return "", errors.ErrInternalServer
-    }
-    httpReq.Header.Set("Accept", "*/*")
-    httpReq.Header.Set("User-Agent", "Mozilla/5.0")
-    httpReq.Header.Set("Content-Type", w.FormDataContentType())
+	// Формируем HTTP-запрос
+	endpoint := fmt.Sprintf("%s/v3.4/auth/email/login", baseURL)
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", endpoint, buf)
+	if err != nil {
+		s.logger.Error("Failed to create HTTP request", zap.Error(err), zap.String("endpoint", endpoint))
+		return "", errors.ErrInternalServer
+	}
+	httpReq.Header.Set("Accept", "*/*")
+	httpReq.Header.Set("User-Agent", "Mozilla/5.0")
+	httpReq.Header.Set("Content-Type", w.FormDataContentType())
 
-    // Выполняем
-    res, err := s.api.Do(httpReq)
-    if err != nil {
-        s.logger.Error("Request error", zap.Error(err))
-        return "", errors.ErrBadRequest
-    }
-    defer res.Body.Close()
+	s.logger.Info("Sending request to external API", zap.String("endpoint", endpoint))
 
-    // Читаем тело
-    body, err := io.ReadAll(res.Body)
-    if err != nil {
-        s.logger.Error("Error reading body", zap.Error(err))
-        return "", errors.ErrInternalServer
-    }
+	// Выполняем HTTP-запрос
+	res, err := s.api.Do(httpReq)
+	if err != nil {
+		s.logger.Error("HTTP request failed", zap.Error(err), zap.String("endpoint", endpoint))
+		return "", errors.ErrBadRequest
+	}
+	defer res.Body.Close()
 
-    // Парсим JSON
-    var parsed struct {
-        Data struct {
-            RefreshToken string `json:"refreshToken"`
-        } `json:"data"`
-    }
-    if err := json.Unmarshal(body, &parsed); err != nil {
-        s.logger.Error("Error parsing JSON", zap.Error(err))
-        return "", errors.ErrInternalServer
-    }
+	s.logger.Info("Received response", zap.Int("status_code", res.StatusCode), zap.String("email", req.Email))
 
-    if parsed.Data.RefreshToken == "" {
-        s.logger.Error("Refresh token not found in response")
-        return "", errors.ErrInternalServer
-    }
-    return parsed.Data.RefreshToken, nil
+	// Читаем тело ответа
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		s.logger.Error("Failed to read response body", zap.Error(err))
+		return "", errors.ErrInternalServer
+	}
+
+	// Парсим JSON
+	var parsed struct {
+		Data struct {
+			RefreshToken string `json:"refreshToken"`
+		} `json:"data"`
+	}
+
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		s.logger.Error("Failed to parse JSON response", zap.Error(err), zap.ByteString("body", body))
+		return "", errors.ErrInternalServer
+	}
+
+	if parsed.Data.RefreshToken == "" {
+		s.logger.Error("Refresh token not found in response", zap.ByteString("body", body))
+		return "", errors.ErrInternalServer
+	}
+
+	s.logger.Info("Successfully fetched refresh token", zap.String("email", req.Email))
+	return parsed.Data.RefreshToken, nil
 }
 
 func (s *RequestServer) GetRefreshTokenDTF(ctx context.Context, req *requestPb.GetRefreshTokenRequest) (*requestPb.GetRefreshTokenResponse, error) {
-    token, err := s.fetchRefreshToken(ctx, req, "https://api.dtf.ru")
-    if err != nil {
-        return nil, err
-    }
-    return &requestPb.GetRefreshTokenResponse{RefreshToken: token}, nil
+	s.logger.Info("Handling GetRefreshTokenDTF", zap.String("email", req.Email))
+	token, err := s.fetchRefreshToken(ctx, req, "https://api.dtf.ru")
+	if err != nil {
+		s.logger.Error("Failed to get refresh token for DTF", zap.Error(err), zap.String("email", req.Email))
+		return nil, err
+	}
+	return &requestPb.GetRefreshTokenResponse{RefreshToken: token}, nil
 }
 
 func (s *RequestServer) GetRefreshTokenVC(ctx context.Context, req *requestPb.GetRefreshTokenRequest) (*requestPb.GetRefreshTokenResponse, error) {
-    token, err := s.fetchRefreshToken(ctx, req, "https://api.vc.ru")
-    if err != nil {
-        return nil, err
-    }
-    return &requestPb.GetRefreshTokenResponse{RefreshToken: token}, nil
+	s.logger.Info("Handling GetRefreshTokenVC", zap.String("email", req.Email))
+	token, err := s.fetchRefreshToken(ctx, req, "https://api.vc.ru")
+	if err != nil {
+		s.logger.Error("Failed to get refresh token for VC", zap.Error(err), zap.String("email", req.Email))
+		return nil, err
+	}
+	return &requestPb.GetRefreshTokenResponse{RefreshToken: token}, nil
 }
-
