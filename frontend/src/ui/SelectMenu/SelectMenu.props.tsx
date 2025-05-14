@@ -1,5 +1,5 @@
 export interface SelectMenuProps {
-    options: { value: string; label: string }[];
+    options: { value: string; label: string }[] | undefined;
     value?: string;
     onChange?: (value: string) => void;
     placeholder?: string;

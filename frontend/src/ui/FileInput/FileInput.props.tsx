@@ -1,7 +1,8 @@
+import { ChangeEventHandler } from "react";
 
 
 export interface FileInputProps {
-    onChange?: (file: File | null) => void;
+    onChange?: ChangeEventHandler<HTMLInputElement>;
     placeholder?: string;
     helperText?: string;
     error?: boolean;

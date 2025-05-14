@@ -33,7 +33,7 @@ const SelectMenu = ({
         setIsOpen(false);
     };
 
-    const selectedLabel = options.find(opt => opt.value === selectedValue)?.label || placeholder;
+    const selectedLabel = options?.find(opt => opt.value === selectedValue)?.label || placeholder;
 
     return (
         <div
@@ -74,7 +74,7 @@ const SelectMenu = ({
             {isOpen && (
                     <div className={"absolute z-10 w-full mt-1 rounded-lg shadow-lg overflow-hidden bg-base-darkBlue transition-all duration-200"}>
                         <ul className="py-1 max-h-60 overflow-auto">
-                            {options.map((option) => (
+                            {options?.map((option) => (
                                 <li
                                     key={option.value}
                                     onClick={() => handleSelect(option.value)}

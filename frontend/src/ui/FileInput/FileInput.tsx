@@ -19,12 +19,6 @@ const FileInput: FC<FileInputProps> = ({
         if (!disabled) inputRef.current?.click();
     };
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        setFileName(file?.name || "");
-        onChange?.(file || null);
-    };
-
     return (
         <div className="flex flex-col w-full gap-1">
             <div
@@ -48,7 +42,7 @@ const FileInput: FC<FileInputProps> = ({
                     type="file"
                     accept={accept}
                     className="hidden"
-                    onChange={handleFileChange}
+                    onChange={onChange}
                     disabled={disabled}
                 />
             </div>
