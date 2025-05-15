@@ -1,17 +1,18 @@
 package routers
 
 import (
+	"context"
+	"time"
+
+	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
+
 	configPb "backend/generated/proto/config"
 	"backend/internal/helpers"
 	"backend/pkg/config"
 	"backend/pkg/errors"
 	jwt "backend/pkg/security/JWT"
 	"backend/pkg/types"
-	"context"
-	"time"
-
-	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
 )
 
 func GetConfigs(logger *zap.Logger, cfg *config.Config, authcontroller *jwt.AuthController, clients *types.MapClients) gin.HandlerFunc {
@@ -41,7 +42,14 @@ func GetConfigs(logger *zap.Logger, cfg *config.Config, authcontroller *jwt.Auth
 func AddConfig(logger *zap.Logger, cfg *config.Config, authcontroller *jwt.AuthController, clients *types.MapClients) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		logger.Debug("Handling AddConfig request")
-		helpers.CheckUser(logger, c, authcontroller)
+		claims, ok := helpers.CheckUser(logger, c, authcontroller)
+		if !ok {
+			return
+		}
+		userId, ok := helpers.ExtractUserIDFromClaims(logger, c, claims)
+		if !ok {
+			return
+		}
 
 		var config types.ConfigForm
 		err := c.ShouldBindJSON(&config)
@@ -50,14 +58,14 @@ func AddConfig(logger *zap.Logger, cfg *config.Config, authcontroller *jwt.AuthC
 			c.AbortWithStatusJSON(errors.ErrBadRequest.Code, gin.H{"message": errors.ErrBadRequest.Message})
 			return
 		}
-		logger.Debug("Parsed request body", zap.String("name", config.Name), zap.Int64("user_id", config.UserId))
+		logger.Debug("Parsed request body", zap.String("name", config.Name), zap.Int64("user_id", userId))
 
 		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 		defer cancel()
 
 		addConfigRequest := &configPb.AddConfigRequest{
 			Name:     config.Name,
-			UserId:   config.UserId,
+			UserId:   userId,
 			Prompt:   config.Prompt,
 			Delay:    config.Delay,
 			Email:    config.Email,

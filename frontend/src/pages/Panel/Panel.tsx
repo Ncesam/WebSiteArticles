@@ -54,6 +54,7 @@ const Panel: FC = () => {
         };
 
         reader.readAsArrayBuffer(file);
+        setLoading(false);
     };
     const startConfig = async () => {
         console.log("start")
@@ -65,9 +66,9 @@ const Panel: FC = () => {
                 console.log("error fetch configs: %s", data.message)
                 return
             }
-            setConfigs(data.result);
+            setConfigs(data.Configs);
         }
-        fetchConfigs()
+        fetchConfigs();
     }, [])
     return (
         <div className={"w-full h-full flex justify-center items-center"}>
@@ -79,14 +80,14 @@ const Panel: FC = () => {
                                 <div className={"flex flex-col gap-4"}>
                                     <div className={"flex justify-between items-center"}>
                                         <span className={"font-bold text-xl"}>Выбери Конфиг</span>
-                                        <SelectMenu value={selected} onChange={(value) => setSelected(value)} options={configs?.map((config) => ({ label: config.name, value: config.id.toString() }))}></SelectMenu>
+                                        <SelectMenu value={selected} onChange={(value) => setSelected(value)} options={configs?.map((config) => ({ label: config.name, value: config.Id }))}></SelectMenu>
                                     </div>
                                     <span className={"font-semibold text-base-grayBlue  "}>Статус: {status ? "Активен" : "Не активен"}</span>
                                 </div>
                                 <div className={"flex justify-between items-center gap-5"}>
                                     <Button styleType={ButtonStyleType.submit} onClick={() => navigate(ADD_CONFIG_ROUTE)}>Создать конфиг</Button>
                                     <div>
-                                        {loading ? <FileInput accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={handleFile} /> : <span className="loader"></span>}
+                                        {!loading ? <FileInput accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={handleFile} /> : <span className="loader"></span>}
                                     </div>
                                     <div>
                                         <Button styleType={ButtonStyleType.submit} disabled={!selected && loading} onClick={startConfig}>Запустить</Button>

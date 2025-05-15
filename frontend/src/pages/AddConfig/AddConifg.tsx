@@ -22,7 +22,8 @@ const AddConfig: FC = () => {
             delay: delay,
             name: name,
             prompt: prompt,
-            userId: 0
+            email: emailAccount,
+            password: passwordAccount
         }
         const [ok, data] = await ConfigService.addConfig(config)
         if (!ok) {

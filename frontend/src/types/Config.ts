@@ -9,9 +9,10 @@ export interface BotConfig {
 
 export interface FormBotConfig {
     name: string,
-    userId: number,
     prompt: string,
     delay: number
+    email: string,
+    password: string,
 }
 
 export interface StartConfig {

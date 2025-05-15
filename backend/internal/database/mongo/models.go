@@ -1,8 +1,11 @@
 package mongo
 
+import "go.mongodb.org/mongo-driver/v2/bson"
+
+
 
 type Config struct {
-	Id           int64  `bson:"id"`
+	Id           bson.ObjectID `bson:"_id,omitempty"`
 	UserId       int64  `bson:"userId"`
 	Name         string `bson:"name"`
 	Prompt       string `bson:"prompt"`

@@ -92,7 +92,7 @@ func (l *QueueLogics) processTask(msg types.InputForm) {
 		l.logger.Error("Failed to get config", zap.Error(err))
 		return
 	}
-	l.logger.Debug("Fetched config", zap.Int64("config_id", config.Id))
+	l.logger.Debug("Fetched config", zap.String("config_id", config.Id))
 
 	// Get refresh tokens
 	refreshTokenDTF, err := l.requestClient.Service.GetRefreshTokenDTF(l.ctx, &request.GetRefreshTokenRequest{
@@ -124,7 +124,7 @@ func (l *QueueLogics) processTask(msg types.InputForm) {
 		l.logger.Error("Failed to update DTF refresh token", zap.Error(err))
 		return
 	}
-	l.logger.Debug("DTF refresh token updated", zap.Int64("config_id", config.Id))
+	l.logger.Debug("DTF refresh token updated", zap.String("config_id", config.Id))
 
 	_, err = l.configClient.Service.UpdateRefreshVCToken(l.ctx, &configPb.UpdateRefreshTokenVCRequest{
 		RefreshTokenVC: refreshTokenVC.RefreshToken,
@@ -134,7 +134,7 @@ func (l *QueueLogics) processTask(msg types.InputForm) {
 		l.logger.Error("Failed to update VC refresh token", zap.Error(err))
 		return
 	}
-	l.logger.Debug("VC refresh token updated", zap.Int64("config_id", config.Id))
+	l.logger.Debug("VC refresh token updated", zap.String("config_id", config.Id))
 
 	// Process data for generation
 	var data map[string][]string

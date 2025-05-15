@@ -17,7 +17,7 @@ message addConfigRequest {
 }
 
 message Config {
-    int64 Id = 1;
+    string Id = 1;
     int64 userId = 2;
     string name = 3;
     string prompt = 4;
@@ -32,23 +32,23 @@ message getConfigsRequest{
     int64 userId = 1;
 }
 message getConfigRequest {
-    int64 configId = 1;
+    string configId = 1;
 }
 
 message Configs {
     repeated Config Configs = 1;
 }
 message deleteConfigRequest {
-    int64 Id = 1;
+    string Id = 1;
     int64 userId = 2;
 }
 message updateRefreshTokenDTFRequest {
     string refreshTokenDTF = 1;
-    int64 id = 2;
+    string id = 2;
 }
 message updateRefreshTokenVCRequest {
     string refreshTokenVC = 1;
-    int64 id = 2;
+    string id = 2;
 }
 
 message Empty {}

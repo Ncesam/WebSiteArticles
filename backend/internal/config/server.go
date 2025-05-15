@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.uber.org/zap"
 
 	configPb "backend/generated/proto/config"
@@ -46,9 +45,9 @@ func (s *ConfigServer) AddConfig(ctx context.Context, req *configPb.AddConfigReq
 		s.logger.Error("Failed to insert config", zap.Error(err))
 		return nil, err
 	}
-	s.logger.Debug("Config added", zap.Int64("config id", doc.Id))
+	s.logger.Debug("Config added", zap.Any("config id", doc.Id))
 	result := &configPb.Config{
-		Id:       doc.Id,
+		Id:       doc.Id.Hex(),
 		UserId:   doc.UserId,
 		Name:     doc.Name,
 		Prompt:   doc.Prompt,
@@ -70,7 +69,7 @@ func (s *ConfigServer) GetConfigs(ctx context.Context, req *configPb.GetConfigsR
 	var result []*configPb.Config
 	for _, config := range configs {
 		config := &configPb.Config{
-			Id:       config.Id,
+			Id:       config.Id.Hex(),
 			UserId:   config.UserId,
 			Name:     config.Name,
 			Prompt:   config.Prompt,
@@ -80,17 +79,13 @@ func (s *ConfigServer) GetConfigs(ctx context.Context, req *configPb.GetConfigsR
 		}
 
 		result = append(result, config)
-		{
-			s.logger.Error("Failed to decode config", zap.Error(err))
-			continue
-		}
 	}
 
 	return &configPb.Configs{Configs: result}, nil
 }
 
 func (s *ConfigServer) DeleteConfig(ctx context.Context, req *configPb.DeleteConfigRequest) (*configPb.Empty, error) {
-	s.logger.Debug("Got config data", zap.Int64("config id", req.Id), zap.Int64("user id", req.UserId))
+	s.logger.Debug("Got config data", zap.String("config id", req.Id), zap.Int64("user id", req.UserId))
 	err := s.db.DeleteConfig(bson.M{"id": req.Id, "userId": req.UserId})
 	if err != nil {
 		s.logger.Error("Failed to delete config", zap.Error(err))
@@ -101,15 +96,15 @@ func (s *ConfigServer) DeleteConfig(ctx context.Context, req *configPb.DeleteCon
 }
 
 func (s *ConfigServer) GetConfig(ctx context.Context, req *configPb.GetConfigRequest) (*configPb.Config, error) {
-	s.logger.Debug("Got config data", zap.Int64("config id", req.ConfigId))
-	config, err := s.db.GetConfigByID(primitive.ObjectID{byte(req.ConfigId)})
+	s.logger.Debug("Got config data", zap.Any("config id", req.ConfigId))
+	config, err := s.db.GetConfigByID(req.ConfigId)
 	if err != nil {
 		s.logger.Error("Failed to find configs", zap.Error(err))
 		return nil, err
 	}
-	s.logger.Debug("Got config", zap.Int64("config id", config.Id))
+	s.logger.Debug("Got config", zap.Any("config id", config.Id))
 	result := &configPb.Config{
-		Id:              config.Id,
+		Id:              config.Id.Hex(),
 		UserId:          config.UserId,
 		Name:            config.Name,
 		Prompt:          config.Prompt,

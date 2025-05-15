@@ -49,7 +49,7 @@ func NewRequestServer(logger *zap.Logger, cfg *config.Config, configClient *grpc
 func (s *RequestServer) SendArticle(ctx context.Context, req *requestPb.SendArticleRequest) (*requestPb.Empty, error) {
 	s.logger.Debug("SendArticle request received",
 		zap.String("title", req.Entry.Title),
-		zap.Int64("config_id", req.ConfigId),
+		zap.String("config_id", req.ConfigId),
 		zap.String("website", req.WebSite.String()),
 	)
 
@@ -73,7 +73,7 @@ func (s *RequestServer) sendToSite(ctx context.Context, req *requestPb.SendArtic
 
 	token, err := s.fetchToken(ctx, req.ConfigId, baseURL)
 	if err != nil {
-		s.logger.Error("Failed to fetch token", zap.Error(err), zap.Int64("config_id", req.ConfigId), zap.Any("website", req.WebSite))
+		s.logger.Error("Failed to fetch token", zap.Error(err), zap.String("config_id", req.ConfigId), zap.Any("website", req.WebSite))
 		return nil, err
 	}
 
@@ -87,13 +87,13 @@ func (s *RequestServer) sendToSite(ctx context.Context, req *requestPb.SendArtic
 	return s.postEntry(ctx, token, subsiteID, req.Entry, baseURL)
 }
 
-func (s *RequestServer) fetchToken(ctx context.Context, configID int64, baseURL string) (string, error) {
-	s.logger.Info("Fetching token", zap.Int64("config_id", configID), zap.String("base_url", baseURL))
+func (s *RequestServer) fetchToken(ctx context.Context, configID string, baseURL string) (string, error) {
+	s.logger.Info("Fetching token", zap.String("config_id", configID), zap.String("base_url", baseURL))
 
 	// 1) Получаем refreshToken из конфига
 	cfg, err := s.configClient.Service.GetConfig(ctx, &configPb.GetConfigRequest{ConfigId: configID})
 	if err != nil {
-		s.logger.Error("GetConfig failed", zap.Error(err), zap.Int64("config_id", configID))
+		s.logger.Error("GetConfig failed", zap.Error(err), zap.String("config_id", configID))
 		return "", err
 	}
 
@@ -116,7 +116,7 @@ func (s *RequestServer) fetchToken(ctx context.Context, configID int64, baseURL 
 
 	resp, err := s.api.Do(httpReq)
 	if err != nil {
-		s.logger.Error("Token request failed", zap.Error(err), zap.Int64("config_id", configID), zap.String("base_url", baseURL))
+		s.logger.Error("Token request failed", zap.Error(err), zap.String("config_id", configID), zap.String("base_url", baseURL))
 		return "", err
 	}
 	defer resp.Body.Close()
@@ -128,7 +128,7 @@ func (s *RequestServer) fetchToken(ctx context.Context, configID int64, baseURL 
 	}
 	body, _ := io.ReadAll(resp.Body)
 	if err := json.Unmarshal(body, &out); err != nil {
-		s.logger.Error("Failed to parse token response", zap.Error(err), zap.Int64("config_id", configID), zap.String("base_url", baseURL))
+		s.logger.Error("Failed to parse token response", zap.Error(err), zap.String("config_id", configID), zap.String("base_url", baseURL))
 		return "", errors.ErrInternalServer
 	}
 	s.logger.Info("Successfully fetched token", zap.String("access_token", out.Data.AccessToken))

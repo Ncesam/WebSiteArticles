@@ -21,7 +21,7 @@ message BlockData {
 }
 
 message startConfigRequest {
-  int64 configId = 1;
+  string configId = 1;
   int64 userId = 2;
   string prompt = 3;
   string data = 4;

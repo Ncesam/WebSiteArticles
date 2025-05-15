@@ -1,7 +1,6 @@
 package mongo
 
 import (
-	"backend/pkg/config"
 	"context"
 	"fmt"
 	"time"
@@ -11,6 +10,8 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"go.uber.org/zap"
+
+	"backend/pkg/config"
 )
 
 type MongoDatabase struct {
@@ -64,18 +65,15 @@ func (m *MongoDatabase) AddConfig(config *Config) error {
 	defer cancel()
 	collection := m.db.Collection("configs")
 	m.logger.Debug("Got collection configs")
-	result, err := collection.InsertOne(ctx, config)
+	_, err := collection.InsertOne(ctx, config)
 	if err != nil {
 		m.logger.Error("Failed to insert config",
 			zap.Error(err),
 			zap.Any("config", config))
 		return err
 	}
-	if oid, ok := result.InsertedID.(int64); ok {
-		config.Id = oid
-	}
 
-	m.logger.Debug("Config successfully added", zap.Int64("config id", config.Id))
+	m.logger.Debug("Config successfully added", zap.Any("config id", config.Id))
 	return nil
 }
 
@@ -100,38 +98,40 @@ func (m *MongoDatabase) GetConfigs() ([]Config, error) {
 	m.logger.Debug("Got all configs")
 	return configs, nil
 }
-func (m *MongoDatabase) GetConfigByID(id primitive.ObjectID) (*Config, error) {
-	m.logger.Debug("Getting config by ID", zap.String("id", id.Hex()))
+func (m *MongoDatabase) GetConfigByID(idStr string) (*Config, error) {
+	objID, err := primitive.ObjectIDFromHex(idStr)
+	if err != nil {
+		return nil, fmt.Errorf("invalid ID: %w", err)
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
 	collection := m.db.Collection("configs")
-	m.logger.Debug("Got collection configs")
-
 	var config Config
-	err := collection.FindOne(ctx, bson.M{"_id": id}).Decode(&config)
+	err = collection.FindOne(ctx, bson.M{"_id": objID}).Decode(&config)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			m.logger.Warn("Config not found", zap.String("id", id.Hex()))
 			return nil, nil
 		}
-		m.logger.Error("Failed to get config", zap.Error(err), zap.String("id", id.Hex()))
 		return nil, fmt.Errorf("failed to get config: %w", err)
 	}
 
-	m.logger.Debug("Config successfully fetched", zap.String("id", id.Hex()))
 	return &config, nil
 }
 
-func (m *MongoDatabase) GetConfigWithFilter(filter interface{}) ([]Config, error) {
+func (m *MongoDatabase) GetConfigWithFilter(filter map[string]interface{}) ([]Config, error) {
 	m.logger.Debug("Getting configs with filter", zap.Any("filter", filter))
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
 	collection := m.db.Collection("configs")
 	m.logger.Debug("Got collection configs")
-
-	cursor, err := collection.Find(ctx, filter)
+	request := bson.D{}
+	for k, v := range filter{
+		request = append(request, bson.E{Key: k, Value: v})
+	}
+	cursor, err := collection.Find(ctx, request)
 	if err != nil {
 		m.logger.Error("Failed to find configs with filter", zap.Error(err), zap.Any("filter", filter))
 		return nil, fmt.Errorf("failed to find configs with filter: %w", err)
@@ -139,8 +139,9 @@ func (m *MongoDatabase) GetConfigWithFilter(filter interface{}) ([]Config, error
 	defer cursor.Close(ctx)
 
 	var configs []Config
-	if err = cursor.All(ctx, &configs); err != nil {
-		m.logger.Error("Failed to decode configs", zap.Error(err))
+	err = cursor.All(ctx, &configs)
+	if err != nil {
+		m.logger.Error("Failed to decode configs", zap.Error(err), zap.Any("configs", configs))
 		return nil, fmt.Errorf("failed to decode configs: %w", err)
 	}
 

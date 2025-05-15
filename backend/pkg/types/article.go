@@ -7,7 +7,7 @@ type Article struct {
   
 
 type InputForm struct {
-	ConfigId int64
+	ConfigId string
 	UserId int64
 	Prompt string
 	Data string

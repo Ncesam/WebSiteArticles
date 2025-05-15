@@ -1,20 +1,19 @@
 package routers
 
 import (
-	queuePb "backend/generated/proto/queue"
-	"backend/internal/helpers"
-	"backend/pkg/config"
-	"backend/pkg/errors"
-	"backend/pkg/types"
 	"context"
 	"net/http"
 	"time"
 
-	jwt "backend/pkg/security/JWT"
-
+	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 
-	"github.com/gin-gonic/gin"
+	queuePb "backend/generated/proto/queue"
+	"backend/internal/helpers"
+	"backend/pkg/config"
+	"backend/pkg/errors"
+	jwt "backend/pkg/security/JWT"
+	"backend/pkg/types"
 )
 
 // StartConfig godoc
@@ -39,7 +38,7 @@ func StartConfig(logger *zap.Logger, cfg *config.Config, clients *types.MapClien
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": errors.ErrBadRequest.Message})
 			return
 		}
-		logger.Debug("Parsed input body", zap.Int64("config_id", body.ConfigId))
+		logger.Debug("Parsed input body", zap.String("config_id", body.ConfigId))
 
 		claims, ok := helpers.CheckUser(logger, c, authController)
 		if !ok {
@@ -59,7 +58,7 @@ func StartConfig(logger *zap.Logger, cfg *config.Config, clients *types.MapClien
 		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 		defer cancel()
 
-		logger.Debug("Sending gRPC StartConfig request", zap.Int64("config_id", body.ConfigId), zap.Int64("user_id", userId))
+		logger.Debug("Sending gRPC StartConfig request", zap.String("config_id", body.ConfigId), zap.Int64("user_id", userId))
 		_, err := clients.Queue.Service.StartConfig(ctx, &queuePb.StartConfigRequest{
 			ConfigId: body.ConfigId,
 			UserId:   userId,
