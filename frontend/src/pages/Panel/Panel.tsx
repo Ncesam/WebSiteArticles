@@ -9,6 +9,7 @@ import { ADD_CONFIG_ROUTE } from "@/utils/consts";
 import { FC, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
+import { StartConfig } from '../../types/Config';
 
 
 
@@ -19,10 +20,12 @@ const Panel: FC = () => {
     const navigate = useNavigate();
     const [selected, setSelected] = useState<string>();
     const [file, setFile] = useState<File | null>();
+    const [data, setData] = useState<string>();
     const [helperText, setHelperText] = useState<{ item: string, text: string }>();
     const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
+        setFile(file);
         setLoading(true);
         const reader = new FileReader();
 
@@ -49,15 +52,27 @@ const Panel: FC = () => {
             });
 
             const jsonString = JSON.stringify(dataObjects);
-
-            console.log('JSON строка:', jsonString);
+            setData(jsonString);
+            setLoading(false);
         };
 
         reader.readAsArrayBuffer(file);
-        setLoading(false);
     };
     const startConfig = async () => {
-        console.log("start")
+        const selectedConfig = configs.find((config) => config.Id === selected);
+        if (selectedConfig) {
+            console.log(selectedConfig);
+            await ConfigService.startConfig({
+                configId: selectedConfig.Id,
+                data: data,
+                prompt: selectedConfig.prompt,
+                userId: 0
+            });
+        } else {
+            console.log(selected)
+            console.error("Config with selected ID not found");
+        }
+
     }
     useEffect(() => {
         const fetchConfigs = async () => {
@@ -82,12 +97,24 @@ const Panel: FC = () => {
                                         <span className={"font-bold text-xl"}>Выбери Конфиг</span>
                                         <SelectMenu value={selected} onChange={(value) => setSelected(value)} options={configs?.map((config) => ({ label: config.name, value: config.Id }))}></SelectMenu>
                                     </div>
-                                    <span className={"font-semibold text-base-grayBlue  "}>Статус: {status ? "Активен" : "Не активен"}</span>
                                 </div>
                                 <div className={"flex justify-between items-center gap-5"}>
                                     <Button styleType={ButtonStyleType.submit} onClick={() => navigate(ADD_CONFIG_ROUTE)}>Создать конфиг</Button>
                                     <div>
-                                        {!loading ? <FileInput accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={handleFile} /> : <span className="loader"></span>}
+                                        {!loading && !file && (
+                                            <FileInput
+                                                accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                                                onChange={handleFile}
+                                            />
+                                            )}
+
+                                            {loading && !file && <span className="loader"></span>}
+
+                                            {file && (
+                                            <Button styleType={ButtonStyleType.submit} onClick={() => setFile(undefined)}>
+                                                Сбросить
+                                            </Button>
+                                            )}
                                     </div>
                                     <div>
                                         <Button styleType={ButtonStyleType.submit} disabled={!selected && loading} onClick={startConfig}>Запустить</Button>

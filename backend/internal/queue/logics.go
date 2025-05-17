@@ -3,6 +3,7 @@ package queue
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 
@@ -32,7 +33,7 @@ func NewLogics(
 	requestClient *grpcfactory.Client[request.RequestServiceClient],
 ) *QueueLogics {
 	logger.Info("Creating QueueLogics instance")
-	ctx, _ := context.WithTimeout(context.Background(), time.Minute*10)
+	ctx := context.Background();
 
 	q := &QueueLogics{
 		logger:        logger,
@@ -137,64 +138,60 @@ func (l *QueueLogics) processTask(msg types.InputForm) {
 	l.logger.Debug("VC refresh token updated", zap.String("config_id", config.Id))
 
 	// Process data for generation
-	var data map[string][]string
-	if err := json.Unmarshal([]byte(msg.Data), &data); err != nil {
-		l.logger.Error("Failed to parse JSON", zap.Error(err))
-		return
-	}
-	l.logger.Debug("Parsed JSON data", zap.Any("data", data))
+	  var items []map[string]interface{}
+    if err := json.Unmarshal([]byte(msg.Data), &items); err != nil {
+        l.logger.Error("Failed to parse JSON array", zap.Error(err))
+        return
+    }
+    l.logger.Debug("Parsed JSON items count", zap.Int("count", len(items)))
 
-	rowCount := len(data)
-	for i := 0; i < rowCount; i++ {
-		result := config.Prompt
-		for key, values := range data {
-			if i < len(values) {
-				placeholder := "{" + key + "}"
-				result = strings.ReplaceAll(result, placeholder, values[i])
-			}
-		}
+    // 2) Для каждого объекта в массиве генерим свою статью
+    for idx, data := range items {
+        // Берём шаблон из конфига
+        prompt := config.Prompt
 
-		// Generate text
-		generatedText, err := l.requestClient.Service.GenerateText(l.ctx, &request.GenerateTextRequest{
-			Prompt: result,
-		})
-		if err != nil {
-			l.logger.Error("Failed to generate text", zap.Error(err))
-			continue
-		}
-		l.logger.Debug("Generated text", zap.String("title", generatedText.Title))
+        // 3) Заменяем все плейсхолдеры {key} -> значение
+        for key, rawVal := range data {
+            placeholder := "{" + key + "}"
+            strVal := fmt.Sprintf("%v", rawVal)
+            prompt = strings.ReplaceAll(prompt, placeholder, strVal)
+        }
+        l.logger.Debug("Built prompt", zap.Int("item_index", idx), zap.String("prompt", prompt))
 
-		// Send the generated article
-		_, err = l.requestClient.Service.SendArticle(l.ctx, &request.SendArticleRequest{
-			WebSite: request.WebSite_DTF,
-			Entry: &request.EntryRequest{
-				Id: 0,
-				SubsiteId: 0,
-				UserId: 0,
-				Type: 1,
-				Title: generatedText.Title,
-				Entry: &request.Entry{
-					Blocks: generatedText.Blocks,
-				},
-			},
-			ConfigId: config.Id,
-		})
-		if err != nil {
-			l.logger.Error("Failed to send article", zap.Error(err))
-			continue
-		}
-		l.logger.Debug("Article sent successfully")
+        // 4) Генерим текст
+        generated, err := l.requestClient.Service.GenerateText(l.ctx, &request.GenerateTextRequest{
+            Prompt: prompt,
+        })
+        if err != nil {
+            l.logger.Error("GenerateText failed", zap.Int("item_index", idx), zap.Error(err))
+            break
+        }
 
-		// Delay if needed
-		if config.Delay > 0 {
-			delayDuration := time.Duration(config.Delay) * time.Hour
-			l.logger.Debug("Delaying next row", zap.Duration("delay", delayDuration))
-			select {
-			case <-time.After(delayDuration):
-			case <-l.ctx.Done():
-				l.logger.Info("Worker context cancelled, stopping...")
-				return
-			}
-		}
-	}
+        // 5) Отправляем статью
+        _, err = l.requestClient.Service.SendArticle(l.ctx, &request.SendArticleRequest{
+            WebSite: request.WebSite_DTF,
+            Entry: &request.EntryRequest{
+                Title: generated.Title,
+                Entry: &request.Entry{Blocks: generated.Blocks},
+            },
+            ConfigId: config.Id,
+        })
+        if err != nil {
+            l.logger.Error("SendArticle failed", zap.Int("item_index", idx), zap.Error(err))
+            continue
+        }
+        l.logger.Info("Article sent", zap.Int("item_index", idx))
+        
+        // 6) Пауза между публикациями, если задана
+        if config.Delay > 0 {
+            delay := time.Duration(config.Delay) * time.Hour
+            l.logger.Debug("Sleeping before next item", zap.Duration("delay", delay))
+            select {
+            case <-time.After(delay):
+            case <-l.ctx.Done():
+                l.logger.Info("Context cancelled, stopping worker")
+                return
+            }
+        }
+    }
 }

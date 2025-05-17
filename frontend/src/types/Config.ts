@@ -1,7 +1,7 @@
 
 export interface BotConfig {
     name: string,
-    id: number,
+    id: string,
     userId: number,
     prompt: string,
     delay: number,

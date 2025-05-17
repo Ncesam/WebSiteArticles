@@ -4,7 +4,7 @@ import { $api } from "./api"
 
 export class ConfigService {
     static async startConfig(config: StartConfig) {
-        const {status, data} = await $api.post("/queue/", {...config})
+        const {status, data} = await $api.post("/queue/", {Data: config.data, Prompt: config.prompt, UserId: 0, ConfigId: config.configId })
         if (status === 200) {
             return [true, data]
         } else {

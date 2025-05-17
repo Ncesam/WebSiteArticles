@@ -96,13 +96,13 @@ func (s *ConfigServer) DeleteConfig(ctx context.Context, req *configPb.DeleteCon
 }
 
 func (s *ConfigServer) GetConfig(ctx context.Context, req *configPb.GetConfigRequest) (*configPb.Config, error) {
-	s.logger.Debug("Got config data", zap.Any("config id", req.ConfigId))
+	s.logger.Debug("Got config data", zap.String("config id", req.ConfigId))
 	config, err := s.db.GetConfigByID(req.ConfigId)
 	if err != nil {
 		s.logger.Error("Failed to find configs", zap.Error(err))
 		return nil, err
 	}
-	s.logger.Debug("Got config", zap.Any("config id", config.Id))
+	s.logger.Debug("Got config", zap.String("config", config.Id.Hex()))
 	result := &configPb.Config{
 		Id:              config.Id.Hex(),
 		UserId:          config.UserId,
@@ -116,4 +116,21 @@ func (s *ConfigServer) GetConfig(ctx context.Context, req *configPb.GetConfigReq
 	}
 
 	return result, nil
+}
+
+func (s *ConfigServer) UpdateRefreshDTFToken(ctx context.Context, req *configPb.UpdateRefreshTokenDTFRequest) (*configPb.Empty, error) {
+	s.logger.Debug("Got config data", zap.String("config id", req.Id))
+	err := s.db.UpdateRefreshTokenDTF(req.Id, req.RefreshTokenDTF)
+	if err != nil {
+		return nil, err
+	}
+	return &configPb.Empty{}, nil
+}
+func (s *ConfigServer) UpdateRefreshVCToken(ctx context.Context, req *configPb.UpdateRefreshTokenVCRequest) (*configPb.Empty, error) {
+	s.logger.Debug("Got config data", zap.String("config id", req.Id))
+	err := s.db.UpdateRefreshTokenVC(req.Id, req.RefreshTokenVC)
+	if err != nil {
+		return nil, err
+	}
+	return &configPb.Empty{}, nil
 }

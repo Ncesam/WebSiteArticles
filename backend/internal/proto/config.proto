@@ -58,6 +58,6 @@ service ConfigService {
     rpc DeleteConfig(deleteConfigRequest) returns (Empty);
     rpc GetConfigs(getConfigsRequest) returns (Configs);
     rpc GetConfig(getConfigRequest) returns (Config);
-    rpc UpdateRefreshDTFToken(updateRefreshTokenDTFRequest) returns (Config);
-    rpc UpdateRefreshVCToken(updateRefreshTokenVCRequest) returns (Config);
+    rpc UpdateRefreshDTFToken(updateRefreshTokenDTFRequest) returns (Empty);
+    rpc UpdateRefreshVCToken(updateRefreshTokenVCRequest) returns (Empty);
 }

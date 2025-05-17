@@ -9,7 +9,7 @@ const useAuth = () => {
     useEffect(() => {
         const interval = setInterval(() => {
             UserService.refreshToken();
-        }, 20 * 1000 * 60);
+        }, 2 * 1000 * 60);
 
         return () => clearInterval(interval);
     }, []);
