@@ -11,7 +11,6 @@ RUN apk update && apk add --no-cache \
 # Установка Go-плагинов для protobuf и swag
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
-RUN go install github.com/swaggo/swag/cmd/swag@latest
 
 # Работаем в директории приложения
 WORKDIR /app
@@ -25,7 +24,7 @@ RUN go mod download
 COPY . .
 
 # Генерация protobuf и swagger
-RUN make proto swag
+RUN make proto
 
 # Сборка
 RUN go build -o /auth_service ./cmd/auth/main.go

@@ -1,6 +1,6 @@
-
 FROM golang:1.24-alpine as builder
 
+# Установка необходимых пакетов
 RUN apk update && apk add --no-cache \
     git \
     curl \
@@ -11,7 +11,7 @@ RUN apk update && apk add --no-cache \
 # Установка Go-плагинов для protobuf и swag
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
-RUN go install github.com/swaggo/swag/cmd/swag@latest
+RUN go install github.com/go-delve/delve/cmd/dlv@latest
 
 # Работаем в директории приложения
 WORKDIR /app
@@ -20,22 +20,17 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 
+
 # Копируем остальное
 COPY . .
 
+# Генерация protobuf
+RUN make proto
 
-RUN make proto swag
+# Сборка
+RUN go build -gcflags="all=-N -l" -o ./config_service ./cmd/config/main.go
 
 
-RUN go build -o /gateway ./cmd/gateway/main.go
+EXPOSE 40000
 
-# Final stage
-FROM alpine:latest
-
-WORKDIR /root/
-COPY --from=builder /app/config/.env ./config/.env
-COPY --from=builder /gateway .
-
-EXPOSE 8000
-
-CMD ["./gateway"]
+CMD ["dlv", "exec", "/app/config_service", "--headless", "--listen=:40000", "--api-version=2", "--accept-multiclient", "--only-same-user=false"]

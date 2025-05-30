@@ -8,16 +8,20 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"strings"
 
+	"github.com/gomarkdown/markdown"
 	"github.com/sashabaranov/go-openai"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	configPb "backend/generated/proto/config"
 	requestPb "backend/generated/proto/request"
 	"backend/pkg/config"
 	"backend/pkg/errors"
 	grpcfactory "backend/pkg/grpcFactory"
+	"backend/pkg/types"
 )
 
 type RequestServer struct {
@@ -45,7 +49,6 @@ func NewRequestServer(logger *zap.Logger, cfg *config.Config, configClient *grpc
 		vcAPIBaseURL:  "https://api.vc.ru",
 	}
 }
-
 func (s *RequestServer) SendArticle(ctx context.Context, req *requestPb.SendArticleRequest) (*requestPb.Empty, error) {
 	s.logger.Debug("SendArticle request received",
 		zap.String("title", req.Entry.Title),
@@ -57,7 +60,6 @@ func (s *RequestServer) SendArticle(ctx context.Context, req *requestPb.SendArti
 	case requestPb.WebSite_DTF:
 		s.logger.Debug("Routing to DTF")
 		return s.sendToSite(ctx, req, s.dtfAPIBaseURL)
-
 	case requestPb.WebSite_VC_RU:
 		s.logger.Debug("Routing to VC.ru")
 		return s.sendToSite(ctx, req, s.vcAPIBaseURL)
@@ -67,7 +69,6 @@ func (s *RequestServer) SendArticle(ctx context.Context, req *requestPb.SendArti
 		return nil, fmt.Errorf("unsupported website: %v", req.WebSite)
 	}
 }
-
 func (s *RequestServer) sendToSite(ctx context.Context, req *requestPb.SendArticleRequest, baseURL string) (*requestPb.Empty, error) {
 	s.logger.Info("Sending article", zap.Any("website", req.WebSite), zap.String("title", req.Entry.Title))
 
@@ -86,7 +87,6 @@ func (s *RequestServer) sendToSite(ctx context.Context, req *requestPb.SendArtic
 	s.logger.Info("Successfully fetched subsite ID", zap.Int64("subsite_id", subsiteID))
 	return s.postEntry(ctx, token, subsiteID, req.Entry, baseURL)
 }
-
 func (s *RequestServer) fetchToken(ctx context.Context, configID string, baseURL string) (string, error) {
 	s.logger.Info("Fetching token", zap.String("config_id", configID), zap.String("base_url", baseURL))
 
@@ -134,7 +134,6 @@ func (s *RequestServer) fetchToken(ctx context.Context, configID string, baseURL
 	s.logger.Info("Successfully fetched token", zap.String("access_token", out.Data.AccessToken))
 	return out.Data.AccessToken, nil
 }
-
 func (s *RequestServer) fetchSubsite(ctx context.Context, accessToken, baseURL string) (int64, error) {
 	endpoint := fmt.Sprintf("%s/v2.1/subsite/me", baseURL)
 	s.logger.Info("Fetching subsite ID", zap.String("endpoint", endpoint))
@@ -179,21 +178,57 @@ func (s *RequestServer) fetchSubsite(ctx context.Context, accessToken, baseURL s
 	s.logger.Info("Successfully fetched subsite ID", zap.Int64("subsite_id", out.Result.ID))
 	return out.Result.ID, nil
 }
+func (s *RequestServer) createEntry(ctx context.Context, subsiteID int64, entry *requestPb.EntryRequest) (*types.EntryRequest, error) {
+	s.logger.Debug("Creating entry", zap.Int64("subsite_id", subsiteID))
+	protoMarshal := protojson.MarshalOptions{
+		EmitUnpopulated: true,
+		UseProtoNames:   true,
+		UseEnumNumbers:  true,
+		AllowPartial:    true,
+	}
+	entry.UserId = subsiteID
+	entry.SubsiteId = subsiteID
+	entryJson, err := protoMarshal.Marshal(entry)
+	if err != nil {
+		s.logger.Error("Failed to marshal entry", zap.Error(err))
+		return nil, err
+	}
+	s.logger.Debug(string(entryJson))
+	var entryMap types.EntryRequest
+	err = json.Unmarshal(entryJson, &entryMap)
+	if err != nil {
+		s.logger.Error("Failed to unmarshal entry", zap.Error(err))
+		return nil, err
+	}
 
+	entryMap.IsEnabledComments = true
+	entryMap.IsEnabledLikes = true
+	entryMap.IsEnabledAd = true
+
+	return &entryMap, nil
+}
 func (s *RequestServer) postEntry(ctx context.Context, accessToken string, subsiteID int64, entry *requestPb.EntryRequest, baseURL string) (*requestPb.Empty, error) {
-	s.logger.Info("Posting entry", zap.Int64("subsite_id", subsiteID), zap.String("base_url", baseURL), zap.String("entry_title", entry.Title))
+	s.logger.Debug("Posting entry", zap.Int64("subsite_id", subsiteID), zap.String("base_url", baseURL), zap.String("entry_title", entry.Title))
+	entryMap, err := s.createEntry(ctx, subsiteID, entry)
+	if err != nil {
+		s.logger.Error("Error to create entry", zap.Error(err))
+		return nil, err
+	}
+	buf := &bytes.Buffer{}
 
-	entry.SubsiteId = int32(subsiteID)
-	bodyMap := map[string]any{"entry": entry}
-	jsonBytes, err := json.Marshal(bodyMap)
+	enc := json.NewEncoder(buf)
+	enc.SetEscapeHTML(false)
+	err = enc.Encode(entryMap)
 	if err != nil {
 		s.logger.Error("Failed to marshal entry", zap.Error(err))
 		return nil, err
 	}
 
-	buf := &bytes.Buffer{}
+	reqJsonBytes := bytes.TrimSpace(buf.Bytes())
+	s.logger.Debug(string(reqJsonBytes))
+
 	w := multipart.NewWriter(buf)
-	_ = w.WriteField("entry", string(jsonBytes))
+	_ = w.WriteField("entry", string(reqJsonBytes))
 	w.Close()
 
 	endpoint := fmt.Sprintf("%s/v2.1/editor", baseURL)
@@ -201,29 +236,100 @@ func (s *RequestServer) postEntry(ctx context.Context, accessToken string, subsi
 	httpReq.Header.Set("jwtauthorization", "Bearer "+accessToken)
 	httpReq.Header.Set("Content-Type", w.FormDataContentType())
 
-	_, err = s.api.Do(httpReq)
+	resp, err := s.api.Do(httpReq)
 	if err != nil {
 		s.logger.Error("Post entry failed", zap.Error(err), zap.String("base_url", baseURL), zap.Int64("subsite_id", subsiteID))
 		return nil, err
 	}
+	if resp.StatusCode != http.StatusOK {
+		s.logger.Error("Status code isn't OK", zap.Int("status_code", resp.StatusCode))
+		return nil, errors.ErrInternalServer
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		s.logger.Error("Failed to read subsite response body", zap.Error(err))
+		return nil, errors.ErrInternalServer
+	}
+	s.logger.Debug(string(body))
 
-	s.logger.Info("Successfully posted entry", zap.String("base_url", baseURL), zap.Int64("subsite_id", subsiteID))
+	s.logger.Debug("Successfully posted entry", zap.String("base_url", baseURL), zap.Int64("subsite_id", subsiteID))
 	return &requestPb.Empty{}, nil
 }
-
-// UploadMedia — заглушка загрузки медиа
 func (s *RequestServer) UploadMedia(ctx context.Context, req *requestPb.UploadMediaRequest) (*requestPb.UploadMediaResponse, error) {
-	s.logger.Info("Uploading media", zap.String("type", req.Type))
-	// Можешь здесь сохранить файл и вернуть UID
-	return &requestPb.UploadMediaResponse{UID: "mocked-uid"}, nil
-}
+	var endpoint string
+	s.logger.Debug("Uploading media")
+	switch req.WebSite {
+	case requestPb.WebSite_DTF:
+		endpoint = "https://upload.dtf.ru/v2.8/uploader/upload"
+	case requestPb.WebSite_VC_RU:
+		endpoint = "https://upload.vc.ru/v2.8/uploader/upload"
+	default:
+		endpoint = ""
+	}
+	resp, err := s.api.Get(req.UrlFile)
+	if err != nil {
+		s.logger.Error("Failed to get File", zap.Error(err))
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		s.logger.Error("Status code isn't OK", zap.Int("status_code", resp.StatusCode))
+		return nil, errors.ErrInternalServer
+	}
 
+	defer resp.Body.Close()
+	payload := &bytes.Buffer{}
+	writer := multipart.NewWriter(payload)
+	part1, errFile1 := writer.CreateFormFile("files_0", "")
+	_, errFile1 = io.Copy(part1, resp.Body)
+	if errFile1 != nil {
+		fmt.Println(errFile1)
+		return nil, errFile1
+	}
+	err = writer.Close()
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", endpoint, payload)
+	if err != nil {
+		return nil, err
+	}
+	httpReq.Header.Set("Content-Type", writer.FormDataContentType())
+
+	respUpload, err := s.api.Do(httpReq)
+	if err != nil {
+		s.logger.Error("Upload failed", zap.Error(err))
+		return nil, err
+	}
+	defer respUpload.Body.Close()
+
+	if respUpload.StatusCode != http.StatusOK {
+		s.logger.Error("Upload failed", zap.Int("status_code", respUpload.StatusCode))
+		return nil, errors.ErrInternalServer
+	}
+
+	body, err := io.ReadAll(respUpload.Body)
+	if err != nil {
+		s.logger.Error("Failed to read upload response", zap.Error(err))
+		return nil, err
+	}
+	s.logger.Debug("Upload response: " + string(body))
+
+	var uploadResponse requestPb.ImageItem
+	err = json.Unmarshal(body, &uploadResponse)
+	if err != nil {
+		s.logger.Error("Failed to unmarshal body", zap.Error(err))
+		return nil, err
+	}
+	return &requestPb.UploadMediaResponse{Info: &uploadResponse}, nil
+}
 func (s *RequestServer) GenerateText(ctx context.Context, req *requestPb.GenerateTextRequest) (*requestPb.Text, error) {
 	s.logger.Info("Generating text from prompt", zap.String("prompt", req.Prompt))
 
 	systemMsg := openai.ChatCompletionMessage{
 		Role:    openai.ChatMessageRoleSystem,
-		Content: "Ты — помощник, генерирующий статью для публикации.",
+		Content: "Ты — помощник, генерирующий статью для публикации. Выводи все в markdown. Также добавь эту партнерскую ссылку " + req.Link,
 	}
 	userMsg := openai.ChatCompletionMessage{
 		Role:    openai.ChatMessageRoleUser,
@@ -247,24 +353,91 @@ func (s *RequestServer) GenerateText(ctx context.Context, req *requestPb.Generat
 	text := resp.Choices[0].Message.Content
 	paragraphs := strings.Split(text, "\n\n")
 	blocks := make([]*requestPb.Block, 0, len(paragraphs))
+
+	title := ""
+
 	for _, p := range paragraphs {
-		if trimmed := strings.TrimSpace(p); trimmed != "" {
-			blocks = append(blocks, &requestPb.Block{
-				Type: "paragraph",
-				Data: &requestPb.BlockData{
-					Text: trimmed,
-				},
-			})
+		trimmed := strings.TrimSpace(p)
+		if trimmed == "" {
+			continue
 		}
+
+		blockType := "text"
+		blockText := trimmed
+
+		if strings.HasPrefix(trimmed, "# ") {
+			blockType = "header"
+			blockText = strings.TrimPrefix(trimmed, "# ")
+			title = blockText
+		} else if strings.HasPrefix(trimmed, ">") {
+			blockType = "quote"
+			blockText = strings.TrimPrefix(trimmed, ">")
+		}
+
+		blocks = append(blocks, &requestPb.Block{
+			Type:   blockType,
+			Cover:  false,
+			Hidden: false,
+			Anchor: "",
+			Data: &requestPb.BlockData{
+				Text: string(markdown.ToHTML([]byte(blockText), nil, nil)),
+			},
+		})
 	}
 
-	s.logger.Info("Successfully generated text", zap.String("title", paragraphs[0]))
+	s.logger.Info("Successfully generated text", zap.String("title", title))
 	return &requestPb.Text{
-		Title:  paragraphs[0],
+		Title:  title,
 		Blocks: blocks,
 	}, nil
 }
+func (s *RequestServer) GetItemLink(ctx context.Context, req *requestPb.GetItemLinkRequest) (*requestPb.ItemLink, error) {
+	s.logger.Debug("Received request to get item link", zap.String("item URI", req.URI))
 
+	var endpoint string = "https://api.content.market.yandex.ru/v3/affiliate/partner/link/create"
+
+	uri, err := url.Parse(endpoint)
+	if err != nil {
+		s.logger.Error("Failed to parse uri", zap.Error(err))
+		return nil, err
+	}
+	q := uri.Query()
+	q.Add("url", req.URI)
+	q.Add("clid", s.cfg.CLID_MARKET)
+	uri.RawQuery = q.Encode()
+
+	httpReq, err := http.NewRequestWithContext(ctx, "GET", uri.String(), nil)
+	if err != nil {
+		s.logger.Error("Failed to create http request", zap.Error(err))
+		return nil, err
+	}
+	resp, err := s.api.Do(httpReq)
+	if err != nil {
+		s.logger.Error("Failed to execute http request", zap.Error(err))
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		s.logger.Error("Received non-OK response", zap.Int("status_code", resp.StatusCode))
+		return nil, fmt.Errorf("Error status code %s", resp.StatusCode)
+	}
+
+	var apiResponse struct {
+		Link struct {
+			URL      string `json:"url"`
+			ShortURL string `json:"shortUrl"`
+		} `json:"link"`
+	}
+	err = json.NewDecoder(resp.Body).Decode(&apiResponse)
+	if err != nil {
+		return nil, err
+	}
+	return &requestPb.ItemLink{
+		URI: apiResponse.Link.URL,
+	}, nil
+}
+func (s *RequestServer) getItemLinkDTF(ctx context.Context, url string, apiUrl)
 func (s *RequestServer) fetchRefreshToken(ctx context.Context, req *requestPb.GetRefreshTokenRequest, baseURL string) (string, error) {
 	s.logger.Info("Starting to fetch refresh token", zap.String("email", req.Email), zap.String("baseURL", baseURL))
 
@@ -333,7 +506,6 @@ func (s *RequestServer) fetchRefreshToken(ctx context.Context, req *requestPb.Ge
 	s.logger.Info("Successfully fetched refresh token", zap.String("email", req.Email))
 	return parsed.Data.RefreshToken, nil
 }
-
 func (s *RequestServer) GetRefreshTokenDTF(ctx context.Context, req *requestPb.GetRefreshTokenRequest) (*requestPb.GetRefreshTokenResponse, error) {
 	s.logger.Info("Handling GetRefreshTokenDTF", zap.String("email", req.Email))
 	token, err := s.fetchRefreshToken(ctx, req, "https://api.dtf.ru")
@@ -343,7 +515,6 @@ func (s *RequestServer) GetRefreshTokenDTF(ctx context.Context, req *requestPb.G
 	}
 	return &requestPb.GetRefreshTokenResponse{RefreshToken: token}, nil
 }
-
 func (s *RequestServer) GetRefreshTokenVC(ctx context.Context, req *requestPb.GetRefreshTokenRequest) (*requestPb.GetRefreshTokenResponse, error) {
 	s.logger.Info("Handling GetRefreshTokenVC", zap.String("email", req.Email))
 	token, err := s.fetchRefreshToken(ctx, req, "https://api.vc.ru")

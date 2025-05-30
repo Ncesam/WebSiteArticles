@@ -49,4 +49,6 @@ type Config struct {
 		ADDRESS string `env:"REQUEST_SERVICE_ADDRESS" env-required:"true" env-description:"Адрес микросервиса"`
 	}
 	OPEN_AI_KEY string `env:"OPEN_AI_KEY" env-required:"false" env-description:"Ключ API Open AI"`
+	CLID_DTF    string `env:"CLID_DTF" env-required:"false" env-description:"CLID для яндекс маркета DTF"`
+	CLID_VC     string `env:"CLID_VC" env-required:"false" env-description:"CLID для яндекс маркета VC"`
 }

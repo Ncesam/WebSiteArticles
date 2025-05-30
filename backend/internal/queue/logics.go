@@ -33,7 +33,7 @@ func NewLogics(
 	requestClient *grpcfactory.Client[request.RequestServiceClient],
 ) *QueueLogics {
 	logger.Info("Creating QueueLogics instance")
-	ctx := context.Background();
+	ctx := context.Background()
 
 	q := &QueueLogics{
 		logger:        logger,
@@ -54,7 +54,6 @@ func NewLogics(
 	logger.Info("QueueLogics instance created and workers started")
 	return q
 }
-
 func (l *QueueLogics) loop() {
 	l.logger.Info("Starting loop for message processing")
 	for {
@@ -68,7 +67,6 @@ func (l *QueueLogics) loop() {
 		}
 	}
 }
-
 func (l *QueueLogics) worker(id int) {
 	l.logger.Info("Worker started", zap.Int("worker_id", id))
 	for {
@@ -82,116 +80,176 @@ func (l *QueueLogics) worker(id int) {
 		}
 	}
 }
-
 func (l *QueueLogics) processTask(msg types.InputForm) {
 	l.logger.Debug("Processing task", zap.Any("message", msg))
-	// Fetch config from the config service
-	config, err := l.configClient.Service.GetConfig(l.ctx, &configPb.GetConfigRequest{
-		ConfigId: msg.ConfigId,
-	})
+
+	config, err := l.fetchConfig(msg.ConfigId)
 	if err != nil {
-		l.logger.Error("Failed to get config", zap.Error(err))
 		return
 	}
-	l.logger.Debug("Fetched config", zap.String("config_id", config.Id))
 
-	// Get refresh tokens
-	refreshTokenDTF, err := l.requestClient.Service.GetRefreshTokenDTF(l.ctx, &request.GetRefreshTokenRequest{
-		Email:    config.Email,
-		Password: config.Password,
+	if err := l.updateRefreshTokens(config); err != nil {
+		return
+	}
+
+	items, err := l.parseItems(msg.Data)
+	if err != nil {
+		return
+	}
+
+	for idx, item := range items {
+		if err := l.processItem(idx, item, config); err != nil {
+			l.logger.Error("Failed to process item", zap.Int("item_index", idx), zap.Error(err))
+			continue
+		}
+
+		if config.Delay > 0 && !l.sleepWithContext(int32(config.Delay)) {
+			return
+		}
+	}
+}
+func (l *QueueLogics) fetchConfig(configID string) (*configPb.Config, error) {
+	config, err := l.configClient.Service.GetConfig(l.ctx, &configPb.GetConfigRequest{ConfigId: configID})
+	if err != nil {
+		l.logger.Error("Failed to get config", zap.Error(err))
+		return nil, err
+	}
+	l.logger.Debug("Fetched config", zap.String("config_id", config.Id))
+	return config, nil
+}
+func (l *QueueLogics) updateRefreshTokens(config *configPb.Config) error {
+	refreshDTF, err := l.requestClient.Service.GetRefreshTokenDTF(l.ctx, &request.GetRefreshTokenRequest{
+		Email: config.Email, Password: config.Password,
 	})
 	if err != nil {
 		l.logger.Error("Failed to get refresh token DTF", zap.Error(err))
-		return
+		return err
 	}
-	l.logger.Debug("Fetched refresh token DTF", zap.String("refresh_token", refreshTokenDTF.RefreshToken))
-
-	refreshTokenVC, err := l.requestClient.Service.GetRefreshTokenVC(l.ctx, &request.GetRefreshTokenRequest{
-		Email:    config.Email,
-		Password: config.Password,
+	refreshVC, err := l.requestClient.Service.GetRefreshTokenVC(l.ctx, &request.GetRefreshTokenRequest{
+		Email: config.Email, Password: config.Password,
 	})
 	if err != nil {
 		l.logger.Error("Failed to get refresh token VC", zap.Error(err))
-		return
+		return err
 	}
-	l.logger.Debug("Fetched refresh token VC", zap.String("refresh_token", refreshTokenVC.RefreshToken))
 
-	// Update refresh tokens
-	_, err = l.configClient.Service.UpdateRefreshDTFToken(l.ctx, &configPb.UpdateRefreshTokenDTFRequest{
-		RefreshTokenDTF: refreshTokenDTF.RefreshToken,
-		Id:              config.Id,
-	})
-	if err != nil {
+	if _, err := l.configClient.Service.UpdateRefreshDTFToken(l.ctx, &configPb.UpdateRefreshTokenDTFRequest{
+		RefreshTokenDTF: refreshDTF.RefreshToken, Id: config.Id,
+	}); err != nil {
 		l.logger.Error("Failed to update DTF refresh token", zap.Error(err))
-		return
+		return err
 	}
-	l.logger.Debug("DTF refresh token updated", zap.String("config_id", config.Id))
 
-	_, err = l.configClient.Service.UpdateRefreshVCToken(l.ctx, &configPb.UpdateRefreshTokenVCRequest{
-		RefreshTokenVC: refreshTokenVC.RefreshToken,
-		Id:             config.Id,
+	if _, err := l.configClient.Service.UpdateRefreshVCToken(l.ctx, &configPb.UpdateRefreshTokenVCRequest{
+		RefreshTokenVC: refreshVC.RefreshToken, Id: config.Id,
+	}); err != nil {
+		l.logger.Error("Failed to update VC refresh token", zap.Error(err))
+		return err
+	}
+
+	return nil
+}
+func (l *QueueLogics) parseItems(data string) ([]map[string]interface{}, error) {
+	var items []map[string]interface{}
+	if err := json.Unmarshal([]byte(data), &items); err != nil {
+		l.logger.Error("Failed to parse JSON array", zap.Error(err))
+		return nil, err
+	}
+	l.logger.Debug("Parsed JSON items count", zap.Int("count", len(items)))
+	return items, nil
+}
+func (l *QueueLogics) processItem(idx int, data map[string]interface{}, config *configPb.Config) error {
+	prompt := l.buildPrompt(config.Prompt, data)
+
+	link, err := l.getItemLink(data["product_url"].(string))
+	if err != nil {
+		return fmt.Errorf("get link: %w", err)
+	}
+
+	urlImage, ok := data["images"].(string)
+	if !ok {
+		return fmt.Errorf("image url not found")
+	}
+
+	fileDTF, err := l.uploadImage(urlImage, request.WebSite_DTF)
+	if err != nil {
+		return fmt.Errorf("upload image DTF: %w", err)
+	}
+	fileVC, err := l.uploadImage(urlImage, request.WebSite_VC_RU)
+	if err != nil {
+		return fmt.Errorf("upload image VC: %w", err)
+	}
+
+	generated, err := l.requestClient.Service.GenerateText(l.ctx, &request.GenerateTextRequest{
+		Prompt: prompt, Link: link.URI,
 	})
 	if err != nil {
-		l.logger.Error("Failed to update VC refresh token", zap.Error(err))
-		return
+		return fmt.Errorf("generate text: %w", err)
 	}
-	l.logger.Debug("VC refresh token updated", zap.String("config_id", config.Id))
 
-	// Process data for generation
-	  var items []map[string]interface{}
-    if err := json.Unmarshal([]byte(msg.Data), &items); err != nil {
-        l.logger.Error("Failed to parse JSON array", zap.Error(err))
-        return
-    }
-    l.logger.Debug("Parsed JSON items count", zap.Int("count", len(items)))
+	if err := l.sendArticle(generated.Title, fileDTF, request.WebSite_DTF, config.Id); err != nil {
+		return err
+	}
+	if err := l.sendArticle(generated.Title, fileVC, request.WebSite_VC_RU, config.Id); err != nil {
+		return err
+	}
 
-    // 2) Для каждого объекта в массиве генерим свою статью
-    for idx, data := range items {
-        // Берём шаблон из конфига
-        prompt := config.Prompt
-
-        // 3) Заменяем все плейсхолдеры {key} -> значение
-        for key, rawVal := range data {
-            placeholder := "{" + key + "}"
-            strVal := fmt.Sprintf("%v", rawVal)
-            prompt = strings.ReplaceAll(prompt, placeholder, strVal)
-        }
-        l.logger.Debug("Built prompt", zap.Int("item_index", idx), zap.String("prompt", prompt))
-
-        // 4) Генерим текст
-        generated, err := l.requestClient.Service.GenerateText(l.ctx, &request.GenerateTextRequest{
-            Prompt: prompt,
-        })
-        if err != nil {
-            l.logger.Error("GenerateText failed", zap.Int("item_index", idx), zap.Error(err))
-            break
-        }
-
-        // 5) Отправляем статью
-        _, err = l.requestClient.Service.SendArticle(l.ctx, &request.SendArticleRequest{
-            WebSite: request.WebSite_DTF,
-            Entry: &request.EntryRequest{
-                Title: generated.Title,
-                Entry: &request.Entry{Blocks: generated.Blocks},
-            },
-            ConfigId: config.Id,
-        })
-        if err != nil {
-            l.logger.Error("SendArticle failed", zap.Int("item_index", idx), zap.Error(err))
-            continue
-        }
-        l.logger.Info("Article sent", zap.Int("item_index", idx))
-        
-        // 6) Пауза между публикациями, если задана
-        if config.Delay > 0 {
-            delay := time.Duration(config.Delay) * time.Hour
-            l.logger.Debug("Sleeping before next item", zap.Duration("delay", delay))
-            select {
-            case <-time.After(delay):
-            case <-l.ctx.Done():
-                l.logger.Info("Context cancelled, stopping worker")
-                return
-            }
-        }
-    }
+	l.logger.Info("Article sent", zap.Int("item_index", idx))
+	return nil
+}
+func (l *QueueLogics) buildPrompt(template string, data map[string]interface{}) string {
+	for key, value := range data {
+		placeholder := "{" + key + "}"
+		template = strings.ReplaceAll(template, placeholder, fmt.Sprintf("%v", value))
+	}
+	return template
+}
+func (l *QueueLogics) uploadImage(url string, site request.WebSite) (*request.UploadMediaResponse, error) {
+	l.logger.Debug("Upload image", zap.String("image_url", url))
+	file, err := l.requestClient.Service.UploadMedia(l.ctx, &request.UploadMediaRequest{
+		WebSite: site, UrlFile: url,
+	})
+	if err != nil {
+		l.logger.Error("Failed to upload media", zap.String("site", site.String()), zap.Error(err))
+		return nil, err
+	}
+	return file, nil
+}
+func (l *QueueLogics) sendArticle(title string, file *request.UploadMediaResponse, site request.WebSite, configId string) error {
+	block := &request.Block{
+		Type: "media",
+		Data: &request.BlockData{
+			Items: []*request.MediaItem{{Image: file.Info}},
+		},
+	}
+	_, err := l.requestClient.Service.SendArticle(l.ctx, &request.SendArticleRequest{
+		WebSite: site,
+		Entry: &request.EntryRequest{
+			Title: title, Type: 1, Entry: &request.Entry{Blocks: []*request.Block{block}},
+		},
+		ConfigId: configId,
+	})
+	return err
+}
+func (l *QueueLogics) sleepWithContext(hours int32) bool {
+	delay := time.Duration(hours) * time.Hour
+	l.logger.Debug("Sleeping before next item", zap.Duration("delay", delay))
+	select {
+	case <-time.After(delay):
+		return true
+	case <-l.ctx.Done():
+		l.logger.Info("Context cancelled, stopping worker")
+		return false
+	}
+}
+func (l *QueueLogics) getItemLink(url string) (*request.ItemLink, error) {
+	l.logger.Debug("Getting item link", zap.String("item_url", url))
+	itemLink, err := l.requestClient.Service.GetItemLink(l.ctx, &request.GetItemLinkRequest{
+		URI: url,
+	})
+	if err != nil {
+		l.logger.Error("Failed to get Item link", zap.Error(err))
+		return nil, err
+	}
+	return itemLink, nil
 }

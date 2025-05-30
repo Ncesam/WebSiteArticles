@@ -12,6 +12,56 @@
             "args": [],
             "program": "${workspaceFolder}/backend/cmd/auth/main.go",
             "cwd": "${workspaceFolder}/backend"
+        }, {
+            "name": "Debug Auth Service",
+            "type": "go",
+            "request": "launch",
+            "mode": "remote",
+            "remotePath": "/app",
+            "port": 40001,
+            "host": "127.0.0.1",
+            "program": "${workspaceFolder}/backend",
+            "showLog": true
+        }, {
+            "name": "Debug Config Service",
+            "type": "go",
+            "request": "launch",
+            "mode": "remote",
+            "remotePath": "/app",
+            "port": 40002,
+            "host": "127.0.0.1",
+            "program": "${workspaceFolder}/backend",
+            "showLog": true
+        }, {
+            "name": "Debug Queue Service",
+            "type": "go",
+            "request": "launch",
+            "mode": "remote",
+            "remotePath": "/app",
+            "port": 40003,
+            "host": "127.0.0.1",
+            "program": "${workspaceFolder}/backend",
+            "showLog": true
+        }, {
+            "name": "Debug Request Service",
+            "type": "go",
+            "request": "launch",
+            "mode": "remote",
+            "remotePath": "/app",
+            "port": 40004,
+            "host": "127.0.0.1",
+            "program": "${workspaceFolder}/backend",
+            "showLog": true
+        },{
+            "name": "Debug Gateway",
+            "type": "go",
+            "request": "launch",
+            "mode": "remote",
+            "remotePath": "/app",
+            "port": 40005,
+            "host": "127.0.0.1",
+            "program": "${workspaceFolder}/backend",
+            "showLog": true
         }
     ]
 }

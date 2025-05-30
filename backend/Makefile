@@ -41,6 +41,7 @@ clean:
 	find . -name "*.pb.go" -type f -delete
 	rm -rf $(SWAG_OUT)/*.json $(SWAG_OUT)/*.yaml $(SWAG_OUT)/docs.go
 	rm -rf logs
+	rm -rf tmp
 
 ## Генерация Swagger (swaggo)
 swag:

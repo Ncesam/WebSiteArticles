@@ -1,0 +1,12 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  cmd = "go build -gcflags='all=-N -l' -o ./tmp/request_service ./cmd/request/main.go && chmod +x ./tmp/request_service"
+  full_bin = "dlv exec ./tmp/request_service --headless --listen=:40000 --api-version=2 --accept-multiclient --only-same-user=false"
+  exclude_bin = true
+  args = ["exec", "./tmp/request_service", "--headless", "--listen=:40000", "--api-version=2", "--accept-multiclient", "--only-same-user=false"]
+  include_ext = ["go"]
+  exclude_dir = ["tmp", "vendor"]
+  delay = 1000
+  log = "build.log"

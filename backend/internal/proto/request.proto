@@ -2,34 +2,27 @@ syntax = "proto3";
 
 package request;
 
-import "google/protobuf/any.proto";
-
 option go_package = "generated/proto/request;request";
 
+// Send Article
 enum WebSite {
   DTF = 0;
   VC_RU = 1;
 }
-
 message sendArticleRequest {
   WebSite WebSite = 1;
   EntryRequest Entry = 3;
   string configId = 4;
 }
-
-
 message EntryRequest {
   int64 id = 1;
   int64 user_id = 2;
-  int32 subsite_id = 3;
+  int64 subsite_id = 3;
   int32 type = 4;
   string title = 5;
   Entry entry = 6;
 }
-
-message Entry {
-  repeated Block blocks = 1;
-}
+message Entry { repeated Block blocks = 1; }
 
 message Block {
   string type = 1;
@@ -40,24 +33,36 @@ message Block {
 }
 
 message BlockData {
-  // list
-  repeated string items = 1;
+  // для media
+  repeated MediaItem items = 1;
+
+  // общий
   string type = 2;
 
-  // quote/text
+  // для text, code, header, quote
   string text = 3;
-  string subline1 = 4;
 
-  // media
-  ImageItem image = 5;
+  // для header
+  string style = 4;
 
-  // link
-  Link link = 6;
+  // для quote
+  string subline1 = 5;
+  string subline2 = 6;
+  ImageItem image = 7;
+
+  // для code
+  string lang = 8;
+}
+
+message MediaItem {
+  string title = 1;
+  ImageItem image = 2;
 }
 
 message ImageItem {
-  string type = 1;
-  ImageData data = 2;
+  string render = 1;
+  string type = 2;
+  ImageData data = 3;
 }
 
 message ImageData {
@@ -75,50 +80,42 @@ message ImageData {
   bool has_audio = 12;
 }
 
-message Link {
-  string type = 1;
-  LinkData data = 2;
-}
-
-message LinkData {
-  string url = 1;
-  string title = 2;
-  string description = 3;
-  google.protobuf.Any image = 4;
-  int32 v = 5;
-  string hostname = 6;
-}
-
-
 message uploadMediaRequest {
-  string Type = 1;
-  bytes File = 2;
+  WebSite WebSite = 1;
+  string urlFile = 2;
 }
-
-message uploadMediaResponse {
-  string UID = 1;
-}
+message uploadMediaResponse { ImageItem info = 1; }
+// Generate Text
 message generateTextRequest {
   string prompt = 1;
-}
-message getRefreshTokenRequest {
-  string email = 1;
-  string password = 2;
-}
-
-message getRefreshTokenResponse {
-  string refreshToken = 1;
+  string link = 2;
 }
 message Text {
   string Title = 1;
   repeated Block Blocks = 2;
 }
+// Get Refresh Tokens
+message getRefreshTokenRequest {
+  string email = 1;
+  string password = 2;
+}
+message getRefreshTokenResponse { string refreshToken = 1; }
+// Get Item Link
+message getItemLinkRequest {
+  string URI = 1;
+  WebSite WebSite = 2;
+}
+message ItemLink { string URI = 1; }
+// Other
 message Empty {}
 
 service RequestService {
   rpc SendArticle(sendArticleRequest) returns (Empty);
   rpc UploadMedia(uploadMediaRequest) returns (uploadMediaResponse);
   rpc GenerateText(generateTextRequest) returns (Text);
-  rpc GetRefreshTokenDTF(getRefreshTokenRequest) returns (getRefreshTokenResponse);
-  rpc GetRefreshTokenVC(getRefreshTokenRequest) returns (getRefreshTokenResponse);
+  rpc GetItemLink(getItemLinkRequest) returns (ItemLink);
+  rpc GetRefreshTokenDTF(getRefreshTokenRequest)
+      returns (getRefreshTokenResponse);
+  rpc GetRefreshTokenVC(getRefreshTokenRequest)
+      returns (getRefreshTokenResponse);
 }
