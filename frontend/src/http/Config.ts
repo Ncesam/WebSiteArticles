@@ -4,7 +4,18 @@ import { $api } from "./api"
 
 export class ConfigService {
     static async startConfig(config: StartConfig) {
-        const {status, data} = await $api.post("/queue/", {Data: config.data, Prompt: config.prompt, UserId: 0, ConfigId: config.configId })
+        const formData = new FormData();
+        formData.append("data", config.data); // файл
+        formData.append("Prompt", config.prompt);
+        formData.append("UserId", "0");
+        formData.append("ConfigId", String(config.configId));
+        const {status, data} = await $api.post("/queue/", formData, {
+            headers: {
+                "Content-Type": "miltipart/form-data"
+            },
+            maxBodyLength: Infinity,
+            maxContentLength: Infinity,
+        })
         if (status === 200) {
             return [true, data]
         } else {

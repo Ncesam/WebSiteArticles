@@ -40,11 +40,11 @@ func NewAuthServer(
 func (s *AuthServer) Login(ctx context.Context, req *authpb.LoginRequest) (*authpb.AuthResponse, error) {
 	user, err := s.UserDataBase.GetUser(map[string]interface{}{"nickname": req.Nickname})
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to get user: %v", err)
+		return nil, status.Errorf(codes.NotFound, "failed to get user: %v", err)
 	}
 	s.logger.Debug("got user data", zap.Int64("user id", user.ID))
 
-	err = security.CompareHashAndPassword(req.Password, user.HashPassword, s.cfg)
+	err = security.CompareHashAndPassword(req.Password, user.HashPassword)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, "invalid password")
 	}

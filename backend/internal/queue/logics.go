@@ -59,7 +59,7 @@ func (l *QueueLogics) loop() {
 	for {
 		select {
 		case msg := <-l.inputChannel:
-			l.logger.Debug("Received message", zap.Any("message", msg))
+			l.logger.Debug("Received message")
 			l.workerPool <- msg // Send task to the worker pool
 		case <-l.ctx.Done():
 			l.logger.Info("Loop context cancelled, stopping...")
@@ -72,7 +72,7 @@ func (l *QueueLogics) worker(id int) {
 	for {
 		select {
 		case msg := <-l.workerPool:
-			l.logger.Debug("Worker received task", zap.Int("worker_id", id), zap.Any("message", msg))
+			l.logger.Debug("Worker received task", zap.Int("worker_id", id))
 			go l.processTask(msg)
 		case <-l.ctx.Done():
 			l.logger.Info("Worker stopped", zap.Int("worker_id", id))
@@ -81,7 +81,7 @@ func (l *QueueLogics) worker(id int) {
 	}
 }
 func (l *QueueLogics) processTask(msg types.InputForm) {
-	l.logger.Debug("Processing task", zap.Any("message", msg))
+	l.logger.Debug("Processing task", zap.String("config_id", msg.ConfigId))
 
 	config, err := l.fetchConfig(msg.ConfigId)
 	if err != nil {
@@ -98,9 +98,14 @@ func (l *QueueLogics) processTask(msg types.InputForm) {
 	}
 
 	for idx, item := range items {
-		if err := l.processItem(idx, item, config); err != nil {
-			l.logger.Error("Failed to process item", zap.Int("item_index", idx), zap.Error(err))
-			continue
+		for {
+			if err := l.processItem(idx, item, config); err != nil {
+				l.logger.Error("Failed to process item", zap.Int("item_index", idx), zap.Error(err))
+				time.Sleep(10 * time.Minute)
+				continue
+			}
+
+			break
 		}
 
 		if config.Delay > 0 && !l.sleepWithContext(int32(config.Delay)) {
@@ -181,16 +186,16 @@ func (l *QueueLogics) processItem(idx int, data map[string]interface{}, config *
 	}
 
 	generated, err := l.requestClient.Service.GenerateText(l.ctx, &request.GenerateTextRequest{
-		Prompt: prompt, Link: link.URI,
+		Prompt: prompt, Link: link.ShortURI,
 	})
 	if err != nil {
 		return fmt.Errorf("generate text: %w", err)
 	}
 
-	if err := l.sendArticle(generated.Title, fileDTF, request.WebSite_DTF, config.Id); err != nil {
+	if err := l.sendArticle(generated, fileVC, request.WebSite_VC_RU, config.Id); err != nil {
 		return err
 	}
-	if err := l.sendArticle(generated.Title, fileVC, request.WebSite_VC_RU, config.Id); err != nil {
+	if err := l.sendArticle(generated, fileDTF, request.WebSite_DTF, config.Id); err != nil {
 		return err
 	}
 
@@ -215,17 +220,25 @@ func (l *QueueLogics) uploadImage(url string, site request.WebSite) (*request.Up
 	}
 	return file, nil
 }
-func (l *QueueLogics) sendArticle(title string, file *request.UploadMediaResponse, site request.WebSite, configId string) error {
-	block := &request.Block{
+func (l *QueueLogics) sendArticle(text *request.Text, file *request.UploadMediaResponse, site request.WebSite, configId string) error {
+	mediaBlock := &request.Block{
 		Type: "media",
 		Data: &request.BlockData{
 			Items: []*request.MediaItem{{Image: file.Info}},
 		},
 	}
+	var blocks []*request.Block
+
+	blocks = append(blocks, mediaBlock)
+
+	for _, block := range text.Blocks {
+		blocks = append(blocks, block)
+	}
+
 	_, err := l.requestClient.Service.SendArticle(l.ctx, &request.SendArticleRequest{
 		WebSite: site,
 		Entry: &request.EntryRequest{
-			Title: title, Type: 1, Entry: &request.Entry{Blocks: []*request.Block{block}},
+			Title: text.Title, Type: 1, Entry: &request.Entry{Blocks: blocks},
 		},
 		ConfigId: configId,
 	})
@@ -251,5 +264,6 @@ func (l *QueueLogics) getItemLink(url string) (*request.ItemLink, error) {
 		l.logger.Error("Failed to get Item link", zap.Error(err))
 		return nil, err
 	}
+	l.logger.Debug("Item link have got", zap.String("link", itemLink.ShortURI))
 	return itemLink, nil
 }

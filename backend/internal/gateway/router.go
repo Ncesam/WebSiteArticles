@@ -40,4 +40,3 @@ func registerQueueRouters(router *gin.Engine, logger *zap.Logger, clients *types
 	queueGroup.POST("/", routers.StartConfig(logger, cfg, clients, authController))
 	logger.Info("Queue routes registered", zap.String("route", "/api/queue"))
 }
-

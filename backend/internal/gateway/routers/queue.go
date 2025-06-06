@@ -2,10 +2,13 @@ package routers
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/xuri/excelize/v2"
 	"go.uber.org/zap"
 
 	queuePb "backend/generated/proto/queue"
@@ -32,13 +35,68 @@ func StartConfig(logger *zap.Logger, cfg *config.Config, clients *types.MapClien
 	return func(c *gin.Context) {
 		logger.Debug("Handling StartConfig request")
 
-		var body types.InputForm
-		if err := c.ShouldBindJSON(&body); err != nil {
-			logger.Error("Invalid request body", zap.Error(err))
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": errors.ErrBadRequest.Message})
+		file, _, err := c.Request.FormFile("data")
+		if err != nil {
+			logger.Error("Invalid file", zap.Error(err))
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": "Invalid file"})
 			return
 		}
+
+		prompt := c.PostForm("Prompt")
+		userIDStr := c.PostForm("UserId")
+		configID := c.PostForm("ConfigId")
+
+		userID, err := strconv.Atoi(userIDStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid UserId"})
+			return
+		}
+		body := types.InputRequestForm{
+			Prompt:   prompt,
+			UserId:   int64(userID),
+			ConfigId: configID,
+		}
 		logger.Debug("Parsed input body", zap.String("config_id", body.ConfigId))
+		workBook, err := excelize.OpenReader(file)
+		if err != nil {
+			logger.Error("Failed to read file", zap.Error(err))
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"message": "Failed to read Excel file"})
+			return
+		}
+
+		sheetName := workBook.GetSheetName(0)
+		if sheetName == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"message": "No sheet found in the Excel file"})
+			return
+		}
+
+		rows, err := workBook.GetRows(sheetName)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": "Unable to read rows from the sheet"})
+			return
+		}
+
+		if len(rows) < 1 {
+			c.JSON(http.StatusOK, gin.H{"data": []interface{}{}})
+			return
+		}
+
+		headers := rows[0]
+		var data []map[string]string
+		for _, row := range rows[1:] {
+			item := make(map[string]string)
+			for i, cell := range row {
+				if i < len(headers) {
+					item[headers[i]] = cell
+				}
+			}
+			data = append(data, item)
+		}
+		jsonBytes, err := json.Marshal(data)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to encode data to JSON"})
+			return
+		}
 
 		claims, ok := helpers.CheckUser(logger, c, authController)
 		if !ok {
@@ -59,11 +117,11 @@ func StartConfig(logger *zap.Logger, cfg *config.Config, clients *types.MapClien
 		defer cancel()
 
 		logger.Debug("Sending gRPC StartConfig request", zap.String("config_id", body.ConfigId), zap.Int64("user_id", userId))
-		_, err := clients.Queue.Service.StartConfig(ctx, &queuePb.StartConfigRequest{
+		_, err = clients.Queue.Service.StartConfig(ctx, &queuePb.StartConfigRequest{
 			ConfigId: body.ConfigId,
 			UserId:   userId,
 			Prompt:   body.Prompt,
-			Data:     body.Data,
+			Data:     string(jsonBytes),
 		})
 		if err != nil {
 			logger.Error("StartConfig gRPC call failed", zap.Error(err))

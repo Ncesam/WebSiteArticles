@@ -1,0 +1,10 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  cmd = "go build -gcflags='all=-N -l' -o ./tmp/queue_service ./cmd/queue/main.go && chmod +x ./tmp/queue_service"
+  bin = "./tmp/queue_service"
+  include_ext = ["go"]
+  exclude_dir = ["tmp", "vendor"]
+  delay = 1000
+  log = "build.log"

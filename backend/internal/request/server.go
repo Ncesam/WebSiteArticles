@@ -90,14 +90,12 @@ func (s *RequestServer) sendToSite(ctx context.Context, req *requestPb.SendArtic
 func (s *RequestServer) fetchToken(ctx context.Context, configID string, baseURL string) (string, error) {
 	s.logger.Info("Fetching token", zap.String("config_id", configID), zap.String("base_url", baseURL))
 
-	// 1) Получаем refreshToken из конфига
 	cfg, err := s.configClient.Service.GetConfig(ctx, &configPb.GetConfigRequest{ConfigId: configID})
 	if err != nil {
 		s.logger.Error("GetConfig failed", zap.Error(err), zap.String("config_id", configID))
 		return "", err
 	}
 
-	// 2) Multipart-запрос
 	buf := &bytes.Buffer{}
 	w := multipart.NewWriter(buf)
 	var refreshToken string
@@ -131,6 +129,11 @@ func (s *RequestServer) fetchToken(ctx context.Context, configID string, baseURL
 		s.logger.Error("Failed to parse token response", zap.Error(err), zap.String("config_id", configID), zap.String("base_url", baseURL))
 		return "", errors.ErrInternalServer
 	}
+	if resp.StatusCode != http.StatusOK {
+		s.logger.Error("Status code isn't OK", zap.String("body", string(body)))
+		return "", errors.ErrInternalServer
+	}
+	s.logger.Debug(string(body))
 	s.logger.Info("Successfully fetched token", zap.String("access_token", out.Data.AccessToken))
 	return out.Data.AccessToken, nil
 }
@@ -225,6 +228,7 @@ func (s *RequestServer) postEntry(ctx context.Context, accessToken string, subsi
 	}
 
 	reqJsonBytes := bytes.TrimSpace(buf.Bytes())
+
 	s.logger.Debug(string(reqJsonBytes))
 
 	w := multipart.NewWriter(buf)
@@ -241,17 +245,18 @@ func (s *RequestServer) postEntry(ctx context.Context, accessToken string, subsi
 		s.logger.Error("Post entry failed", zap.Error(err), zap.String("base_url", baseURL), zap.Int64("subsite_id", subsiteID))
 		return nil, err
 	}
-	if resp.StatusCode != http.StatusOK {
-		s.logger.Error("Status code isn't OK", zap.Int("status_code", resp.StatusCode))
-		return nil, errors.ErrInternalServer
-	}
-	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		s.logger.Error("Failed to read subsite response body", zap.Error(err))
 		return nil, errors.ErrInternalServer
 	}
 	s.logger.Debug(string(body))
+
+	if resp.StatusCode != http.StatusOK {
+		s.logger.Error("Status code isn't OK", zap.Int("status_code", resp.StatusCode))
+		return nil, errors.ErrInternalServer
+	}
+	defer resp.Body.Close()
 
 	s.logger.Debug("Successfully posted entry", zap.String("base_url", baseURL), zap.Int64("subsite_id", subsiteID))
 	return &requestPb.Empty{}, nil
@@ -276,12 +281,12 @@ func (s *RequestServer) UploadMedia(ctx context.Context, req *requestPb.UploadMe
 		s.logger.Error("Status code isn't OK", zap.Int("status_code", resp.StatusCode))
 		return nil, errors.ErrInternalServer
 	}
-
+	s.logger.Debug("File downloaded")
 	defer resp.Body.Close()
 	payload := &bytes.Buffer{}
 	writer := multipart.NewWriter(payload)
-	part1, errFile1 := writer.CreateFormFile("files_0", "")
-	_, errFile1 = io.Copy(part1, resp.Body)
+	part1, _ := writer.CreateFormFile("files_0", "image")
+	_, errFile1 := io.Copy(part1, resp.Body)
 	if errFile1 != nil {
 		fmt.Println(errFile1)
 		return nil, errFile1
@@ -304,11 +309,6 @@ func (s *RequestServer) UploadMedia(ctx context.Context, req *requestPb.UploadMe
 	}
 	defer respUpload.Body.Close()
 
-	if respUpload.StatusCode != http.StatusOK {
-		s.logger.Error("Upload failed", zap.Int("status_code", respUpload.StatusCode))
-		return nil, errors.ErrInternalServer
-	}
-
 	body, err := io.ReadAll(respUpload.Body)
 	if err != nil {
 		s.logger.Error("Failed to read upload response", zap.Error(err))
@@ -316,13 +316,18 @@ func (s *RequestServer) UploadMedia(ctx context.Context, req *requestPb.UploadMe
 	}
 	s.logger.Debug("Upload response: " + string(body))
 
-	var uploadResponse requestPb.ImageItem
-	err = json.Unmarshal(body, &uploadResponse)
+	if respUpload.StatusCode != http.StatusOK {
+		s.logger.Error("Upload failed", zap.Int("status_code", respUpload.StatusCode))
+		return nil, errors.ErrInternalServer
+	}
+
+	var uploadResponse requestPb.UploadResponse
+	err = protojson.Unmarshal(body, &uploadResponse)
 	if err != nil {
 		s.logger.Error("Failed to unmarshal body", zap.Error(err))
 		return nil, err
 	}
-	return &requestPb.UploadMediaResponse{Info: &uploadResponse}, nil
+	return &requestPb.UploadMediaResponse{Info: uploadResponse.Result[0]}, nil
 }
 func (s *RequestServer) GenerateText(ctx context.Context, req *requestPb.GenerateTextRequest) (*requestPb.Text, error) {
 	s.logger.Info("Generating text from prompt", zap.String("prompt", req.Prompt))
@@ -392,7 +397,7 @@ func (s *RequestServer) GenerateText(ctx context.Context, req *requestPb.Generat
 	}, nil
 }
 func (s *RequestServer) GetItemLink(ctx context.Context, req *requestPb.GetItemLinkRequest) (*requestPb.ItemLink, error) {
-	s.logger.Debug("Received request to get item link", zap.String("item URI", req.URI))
+	s.logger.Debug("Received request to get item link")
 
 	var endpoint string = "https://api.content.market.yandex.ru/v3/affiliate/partner/link/create"
 
@@ -403,13 +408,30 @@ func (s *RequestServer) GetItemLink(ctx context.Context, req *requestPb.GetItemL
 	}
 	q := uri.Query()
 	q.Add("url", req.URI)
-	q.Add("clid", s.cfg.CLID_MARKET)
+	switch req.WebSite {
+	case requestPb.WebSite_DTF:
+		q.Add("clid", s.cfg.CLID_DTF)
+		break
+	case requestPb.WebSite_VC_RU:
+		q.Add("clid", s.cfg.CLID_VC)
+		break
+	default:
+		break
+	}
 	uri.RawQuery = q.Encode()
 
 	httpReq, err := http.NewRequestWithContext(ctx, "GET", uri.String(), nil)
 	if err != nil {
 		s.logger.Error("Failed to create http request", zap.Error(err))
 		return nil, err
+	}
+	switch req.WebSite {
+	case requestPb.WebSite_DTF:
+		httpReq.Header.Set("Authorization", s.cfg.MARKET_API_DTF)
+		break
+	case requestPb.WebSite_VC_RU:
+		httpReq.Header.Set("Authorization", s.cfg.MARKET_API_VC)
+		break
 	}
 	resp, err := s.api.Do(httpReq)
 	if err != nil {
@@ -423,21 +445,16 @@ func (s *RequestServer) GetItemLink(ctx context.Context, req *requestPb.GetItemL
 		return nil, fmt.Errorf("Error status code %s", resp.StatusCode)
 	}
 
-	var apiResponse struct {
-		Link struct {
-			URL      string `json:"url"`
-			ShortURL string `json:"shortUrl"`
-		} `json:"link"`
-	}
+	var apiResponse types.GetLinkResponse
 	err = json.NewDecoder(resp.Body).Decode(&apiResponse)
 	if err != nil {
 		return nil, err
 	}
 	return &requestPb.ItemLink{
-		URI: apiResponse.Link.URL,
+		URI:      apiResponse.Link.URL,
+		ShortURI: apiResponse.Link.ShortURL,
 	}, nil
 }
-func (s *RequestServer) getItemLinkDTF(ctx context.Context, url string, apiUrl)
 func (s *RequestServer) fetchRefreshToken(ctx context.Context, req *requestPb.GetRefreshTokenRequest, baseURL string) (string, error) {
 	s.logger.Info("Starting to fetch refresh token", zap.String("email", req.Email), zap.String("baseURL", baseURL))
 

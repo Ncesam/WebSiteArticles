@@ -1,9 +1,8 @@
 import React, { FC, Suspense } from "react";
-import { useStore } from "./hooks/store";
+import { useStore } from "@/hooks/store";
 import { Navigate, Route, Routes } from "react-router-dom";
-import RootStore from "./stores/rootStore";
-import { LOGIN_ROUTE, PANEL_ROUTE } from "./utils/consts";
-import { authRoutes, primaryRoutes } from "./routes";
+import { LOGIN_ROUTE, PANEL_ROUTE } from "@/utils/consts";
+import { authRoutes, primaryRoutes } from "@/routes";
 import { observer} from "mobx-react";
 
 

@@ -1,0 +1,10 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  cmd = "go build -gcflags='all=-N -l' -o ./tmp/gateway ./cmd/gateway/main.go && chmod +x ./tmp/gateway"
+  bin = "./tmp/gateway"
+  include_ext = ["go"]
+  exclude_dir = ["tmp", "vendor"]
+  delay = 1000
+  log = "build.log"

@@ -85,6 +85,11 @@ message uploadMediaRequest {
   string urlFile = 2;
 }
 message uploadMediaResponse { ImageItem info = 1; }
+
+message uploadResponse {
+  string message = 1;
+  repeated ImageItem result = 2;
+}
 // Generate Text
 message generateTextRequest {
   string prompt = 1;
@@ -105,7 +110,10 @@ message getItemLinkRequest {
   string URI = 1;
   WebSite WebSite = 2;
 }
-message ItemLink { string URI = 1; }
+message ItemLink {
+  string URI = 1;
+  string ShortURI = 2;
+}
 // Other
 message Empty {}
 

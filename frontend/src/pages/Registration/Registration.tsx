@@ -1,75 +1,126 @@
-import React, { useState } from "react";
-import type { FC } from "react";
+import { FC, useState } from "react";
+import { useNavigate } from "react-router-dom";
+
 import { RegistrationProps } from "./Registration.props";
 import Input from "@/ui/Input/Input";
-import { InputStyleType } from "@/ui/Input/Input.props";
+import { InputStyleType, InputType } from "@/ui/Input/Input.props";
 import Button from "@/ui/Button/Button";
 import { ButtonStyleType } from "@/ui/Button/Button.props";
 import { UserService } from "@/http/User";
-import { useNavigate } from "react-router-dom";
 import { LOGIN_ROUTE } from "@/utils/consts";
 
-const Registration: FC<RegistrationProps> = ({ }) => {
-    const [errors, setErrors] = useState<{ email?: string, nickname?: string, password?: string }>();
-    const [email, setEmail] = useState<string>("");
-    const [nickname, setNickname] = useState<string>("");
-    const [password, setPassword] = useState<string>("");
-    const [isValid, setIsValid] = useState<boolean>();
-    const [isLoading, setIsLoading] = useState<boolean>();
-    const navigate = useNavigate();
-    const validate = (data: any) => {
-        const fieldErrors: { email?: string, nickname?: string, password?: string } = {};
-        switch (data.message) {
-            case "Fill fields":
-                fieldErrors["password"] = "Заполните";
-                fieldErrors["nickname"] = "Заполните";
-                fieldErrors["email"] = "Заполните";
-                setErrors(fieldErrors);
-                return false;
-            case "Password not validate":
-                fieldErrors["password"] = "Длина пароля от 8 символов";
-                setErrors(fieldErrors);
-                return false;
-            case "email already exists":
-                fieldErrors['email'] = "Пользователь с такой почтой существует"
-                setErrors(fieldErrors);
-                return false
-            case "nickname already exists":
-                fieldErrors['nickname'] = "Пользователь с таким именем существует"
-                setErrors(fieldErrors);
-                return false;
-            default:
-                setErrors({});
-                return true;
-        }
-    };
-    const register = async () => {
-        const [ok, err] = await UserService.register(email, nickname, password);
-        if (!ok) {
-            validate(err)
-            return;
-        }
-        navigate(LOGIN_ROUTE);
+const Registration: FC<RegistrationProps> = () => {
+  const navigate = useNavigate();
+
+  const [email, setEmail] = useState("");
+  const [nickname, setNickname] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const [errors, setErrors] = useState<{
+    email?: string;
+    nickname?: string;
+    password?: string;
+    confirmPassword?: string;
+  }>({});
+
+  const validate = (message: string): boolean => {
+    const fieldErrors: typeof errors = {};
+
+    switch (message) {
+      case "Fill fields":
+        fieldErrors.email = "Заполните почту";
+        fieldErrors.nickname = "Заполните логин";
+        fieldErrors.password = "Заполните пароль";
+        break;
+      case "Password not validate":
+        fieldErrors.password = "Длина пароля должна быть от 8 символов";
+        break;
+      case "email already exists":
+        fieldErrors.email = "Пользователь с такой почтой уже существует";
+        break;
+      case "nickname already exists":
+        fieldErrors.nickname = "Пользователь с таким именем уже существует";
+        break;
+      default:
+        break;
     }
-    return (
-        <div className={"flex-1 flex h-screen items-center justify-center"}>
-            <div className={"flex flex-col items-center gap-2"}>
-                <div>
-                    <h1 className={"text-2xl font-semibold text-base-darkBlue tracking-tight leading-snug"}>
-                        Регистрация
-                    </h1>
-                </div>
-                <Input style={InputStyleType.login} helperText={errors?.email} error={errors?.email ? true : undefined} onChange={(e) => setEmail(e.target.value)} placeholder={"Почта"} />
-                <Input style={InputStyleType.login} helperText={errors?.nickname} error={errors?.nickname ? true : undefined} onChange={(e) => setNickname(e.target.value)} placeholder={"Логин"} />
-                <Input style={InputStyleType.login} helperText={errors?.password} error={errors?.password ? true : undefined} onChange={(e) => setPassword(e.target.value)} placeholder={"Пароль"} />
-                <Input style={InputStyleType.login} onChange={(e) => password === e.target.value ? setIsValid(false) : setIsValid(true)} helperText={isValid ? "Пароли не совпадают" : undefined} placeholder={"Повторите Пароль"} />
-                <div className={"flex items-center justify-between gap-2"}>
-                    <Button styleType={ButtonStyleType.submit} onClick={register} disabled={isValid}>Зарегистрироваться</Button>
-                </div>
-            </div>
-        </div>
-    );
+
+    setErrors(fieldErrors);
+    return Object.keys(fieldErrors).length === 0;
+  };
+
+  const handleRegister = async () => {
+    if (password !== confirmPassword) {
+      setErrors((prev) => ({
+        ...prev,
+        confirmPassword: "Пароли не совпадают",
+      }));
+      return;
+    }
+
+    const [ok, err] = await UserService.register(email, nickname, password);
+    if (!ok) {
+      validate(err.message);
+      return;
+    }
+
+    navigate(LOGIN_ROUTE);
+  };
+
+  return (
+    <div className="flex-1 flex items-center justify-center">
+      <div className="w-full flex-col flex items-center gap-4">
+        <h1 className={"text-2xl font-semibold text-base-darkBlue tracking-tight leading-snug"}>Регистрация</h1>
+
+        <Input
+          style={InputStyleType.login}
+          placeholder="Почта"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          helperText={errors.email}
+          error={!!errors.email}
+        />
+
+        <Input
+          style={InputStyleType.login}
+          placeholder="Логин"
+          value={nickname}
+          onChange={(e) => setNickname(e.target.value)}
+          helperText={errors.nickname}
+          error={!!errors.nickname}
+        />
+
+        <Input
+          style={InputStyleType.login}
+          placeholder="Пароль"
+          type={InputType.password}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          helperText={errors.password}
+          error={!!errors.password}
+        />
+
+        <Input
+          style={InputStyleType.login}
+          placeholder="Повторите пароль"
+          type={InputType.password}
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          helperText={errors.confirmPassword}
+          error={!!errors.confirmPassword}
+        />
+        <Button
+        styleType={ButtonStyleType.submit}
+        onClick={handleRegister}
+        disabled={!email || !nickname || !password || !confirmPassword}
+        >
+        Зарегистрироваться
+        </Button>
+        
+      </div>
+    </div>
+  );
 };
 
 export default Registration;
-

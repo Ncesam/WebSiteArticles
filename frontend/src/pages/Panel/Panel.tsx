@@ -8,85 +8,91 @@ import SelectMenu from "@/ui/SelectMenu/SelectMenu";
 import { ADD_CONFIG_ROUTE } from "@/utils/consts";
 import { FC, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import * as XLSX from "xlsx";
-import { StartConfig } from '../../types/Config';
+import { PopupToast } from '@/components/Popup/Popup';
+import { PopupStyle } from '@/components/Popup/Popup.props';
 
 
 
+const MAX_FILE_SIZE_MB = 5;
 const Panel: FC = () => {
-    const [status, setStatus] = useState<boolean>(false);
-    const [configs, setConfigs] = useState<BotConfig[]>();
-    const [loading, setLoading] = useState<boolean>();
-    const navigate = useNavigate();
-    const [selected, setSelected] = useState<string>();
-    const [file, setFile] = useState<File | null>();
-    const [data, setData] = useState<string>();
-    const [helperText, setHelperText] = useState<{ item: string, text: string }>();
-    const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        setFile(file);
-        setLoading(true);
-        const reader = new FileReader();
+  const [configs, setConfigs] = useState<BotConfig[] | undefined>();
+  const [selected, setSelected] = useState<string>("");
+  const [file, setFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
 
-        reader.onload = (event) => {
-            const data = new Uint8Array(event.target?.result as ArrayBuffer);
-            const workbook = XLSX.read(data, { type: 'array' });
+  const [showToast, setShowToast] = useState<boolean>(false);
+  const [toastText, setToastText] = useState<{ title: string; text: string; type: PopupStyle }>({
+    title: "",
+    text: "",
+    type: PopupStyle.Info,
+  });
 
-            const firstSheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[firstSheetName];
+  const navigate = useNavigate();
 
-
-            const rows: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
-            if (rows.length === 0) return;
-
-            const headers = rows[0] as string[];
-
-            const dataObjects = rows.slice(1).map((row) => {
-                const obj: Record<string, any> = {};
-                headers.forEach((header, index) => {
-                    obj[header] = row[index];
-                });
-                return obj;
-            });
-
-            const jsonString = JSON.stringify(dataObjects);
-            setData(jsonString);
-            setLoading(false);
-        };
-
-        reader.readAsArrayBuffer(file);
+  useEffect(() => {
+    const fetchConfigs = async () => {
+      const [ok, data] = await ConfigService.getConfigs();
+      if (data.Configs) setConfigs(data.Configs);
+      else setConfigs(undefined);
     };
-    const startConfig = async () => {
-        const selectedConfig = configs.find((config) => config.Id === selected);
-        if (selectedConfig) {
-            console.log(selectedConfig);
-            await ConfigService.startConfig({
-                configId: selectedConfig.Id,
-                data: data,
-                prompt: selectedConfig.prompt,
-                userId: 0
-            });
-        } else {
-            console.log(selected)
-            console.error("Config with selected ID not found");
-        }
+    fetchConfigs();
+  }, []);
 
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+      resetToast("Ошибка файла", `Файл не должен превышать ${MAX_FILE_SIZE_MB} МБ`, PopupStyle.Error);
+      return;
     }
-    useEffect(() => {
-        const fetchConfigs = async () => {
-            const [ok, data] = await ConfigService.getConfigs();
-            if (!ok) {
-                console.log("error fetch configs: %s", data.message)
-                return
-            }
-            setConfigs(data.Configs);
-        }
-        fetchConfigs();
-    }, [])
+
+    setFile(file);
+  };
+
+  const resetToast = (title: string, text: string, type: PopupStyle) => {
+    setToastText({ title, text, type });
+    setShowToast(true);
+  };
+
+  const startConfig = async () => {
+    if (!selected) return;
+
+    const selectedConfig = configs?.find((config) => config.Id === selected);
+    if (!selectedConfig) {
+      resetToast("Ошибка", "Выбранный конфиг не найден", PopupStyle.Error);
+      return;
+    }
+
+    if (!file) {
+      resetToast("Ошибка запуска", "Выберите файл до 5мб", PopupStyle.Error);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await ConfigService.startConfig({
+        configId: selectedConfig.Id,
+        data: file,
+        prompt: selectedConfig.prompt,
+        userId: 0,
+      });
+      resetToast("Бот запущен", `Bot config ID ${selected}`, PopupStyle.Success);
+      setFile(null);
+    } catch (err) {
+      console.error("Ошибка запуска бота:", err);
+      resetToast("Ошибка запуска", "Не удалось запустить бота", PopupStyle.Error);
+    } finally {
+      setLoading(false);
+    }
+  };
     return (
         <div className={"w-full h-full flex justify-center items-center"}>
+            {showToast && (
+                <PopupToast title={toastText.title} style={toastText.type} onClose={() => setShowToast(false)}>
+                {toastText.text}
+                </PopupToast>
+            )}
             <div className={"flex w-full h-full flex-col items-center gap-3"}>
                 <div className={"flex w-full justify-center items-center gap-2"}>
                     <div className={"h-full"}>
@@ -95,35 +101,40 @@ const Panel: FC = () => {
                                 <div className={"flex flex-col gap-4"}>
                                     <div className={"flex justify-between items-center"}>
                                         <span className={"font-bold text-xl"}>Выбери Конфиг</span>
-                                        <SelectMenu value={selected} onChange={(value) => setSelected(value)} options={configs?.map((config) => ({ label: config.name, value: config.Id }))}></SelectMenu>
+                                        <SelectMenu
+                                            value={selected}
+                                            onChange={setSelected}
+                                            options={configs?.map((config) => ({ label: config.name, value: config.Id }))}
+                                        />
                                     </div>
                                 </div>
                                 <div className={"flex justify-between items-center gap-5"}>
                                     <Button styleType={ButtonStyleType.submit} onClick={() => navigate(ADD_CONFIG_ROUTE)}>Создать конфиг</Button>
-                                    <div>
-                                        {!loading && !file && (
-                                            <FileInput
-                                                accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                                                onChange={handleFile}
-                                            />
-                                            )}
+                                    {!loading && !file && (
+                                        <FileInput
+                                            accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                                            onChange={handleFile}
+                                        />
+                                    )}
+                                    {loading && !file && <span className="loader" />}
 
-                                            {loading && !file && <span className="loader"></span>}
+                                    {file && (
+                                    <Button styleType={ButtonStyleType.submit} onClick={() => setFile(null)}>
+                                        Сбросить
+                                    </Button>
+                                    )}
 
-                                            {file && (
-                                            <Button styleType={ButtonStyleType.submit} onClick={() => setFile(undefined)}>
-                                                Сбросить
-                                            </Button>
-                                            )}
-                                    </div>
-                                    <div>
-                                        <Button styleType={ButtonStyleType.submit} disabled={!selected && loading} onClick={startConfig}>Запустить</Button>
-                                    </div>
+                                    <Button
+                                        styleType={ButtonStyleType.submit}
+                                        disabled={!selected || loading}
+                                        onClick={startConfig}
+                                    >
+                                        Запустить
+                                    </Button>
                                 </div>
                             </Card>
                         </div>
                     </div>
-
                 </div>
             </div>
         </div >

@@ -8,10 +8,10 @@ RUN apk update && apk add --no-cache \
     protobuf \
     make
 
-# Установка Go-плагинов для protobuf и swag
+# Установка Go-плагинов для protobuf
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
-RUN go install github.com/swaggo/swag/cmd/swag@latest
+RUN go install github.com/air-verse/air@latest
 RUN go install github.com/go-delve/delve/cmd/dlv@latest
 
 # Работаем в директории приложения
@@ -21,17 +21,12 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 
-
 # Копируем остальное
 COPY . .
 
 # Генерация protobuf
-RUN make proto swag
-
-# Сборка
-RUN go build -gcflags="all=-N -l" -o ./gateway ./cmd/gateway/main.go
+RUN make proto
 
 
-EXPOSE 40000 8080
 
-CMD ["dlv", "exec", "/app/gateway", "--headless", "--listen=:40000", "--api-version=2", "--accept-multiclient"]
+CMD ["air", "-c", "deploy/gateway/air.toml"]

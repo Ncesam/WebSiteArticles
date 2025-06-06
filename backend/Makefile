@@ -57,4 +57,4 @@ lint:
 
 ## Тесты
 test:
-	go test ./... -v
+	go test ./...

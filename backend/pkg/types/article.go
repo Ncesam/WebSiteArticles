@@ -11,6 +11,12 @@ type InputForm struct {
 	Prompt   string
 	Data     string
 }
+type InputRequestForm struct {
+	ConfigId string
+	UserId   int64
+	Prompt   string
+	File     []byte
+}
 type EntryRequest struct {
 	ID                 string `json:"id"`
 	UserID             string `json:"user_id"`
@@ -49,8 +55,8 @@ type Block struct {
 
 type BlockData struct {
 	// Для list
-	Items []string `json:"items,omitempty"`
-	Type  string   `json:"type,omitempty"` // UL / OL
+	Items []BlockItem `json:"items,omitempty"`
+	Type  string      `json:"type,omitempty"`
 
 	// Для quote, text и др.
 	Text     string `json:"text,omitempty"`
@@ -61,6 +67,11 @@ type BlockData struct {
 
 	// Для link
 	Link *Link `json:"link,omitempty"`
+}
+
+type BlockItem struct {
+	Title string     `json:"title"`
+	Image *ImageItem `json:"image,omitempty"`
 }
 
 type ImageItem struct {
@@ -92,32 +103,7 @@ type LinkData struct {
 	URL         string `json:"url"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
-	Image       any    `json:"image"` // Может быть nil или объект
+	Image       any    `json:"image"`
 	V           int    `json:"v"`
 	Hostname    string `json:"hostname"`
-}
-
-type UploadResponse struct {
-	Message string       `json:"message"`
-	Result  []UploadItem `json:"result"`
-}
-
-type UploadItem struct {
-	Type string     `json:"type"`
-	Data UploadData `json:"data"`
-}
-
-type UploadData struct {
-	UUID            string        `json:"uuid"`
-	Width           int           `json:"width"`
-	Height          int           `json:"height"`
-	Size            int           `json:"size"`
-	Type            string        `json:"type"`
-	Color           string        `json:"color"`
-	Hash            string        `json:"hash"`
-	ExternalService []interface{} `json:"external_service"` // или []string, если точно знаешь
-	Base64Preview   string        `json:"base64preview"`
-	IsVideo         bool          `json:"isVideo"`
-	Duration        interface{}   `json:"duration"` // можно заменить на *float64, если знаешь, что это float
-	HasAudio        bool          `json:"has_audio"`
 }

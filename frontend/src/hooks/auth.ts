@@ -1,7 +1,5 @@
-import {useContext, useEffect, useState} from "react";
-import {$api} from "@/http/api";
-import {Context} from "@/index";
-import { useStore } from "./store";
+import {useEffect} from "react";
+import { useStore } from "@/hooks/store";
 import { UserService } from "@/http/User";
 
 
@@ -27,16 +25,15 @@ const useAutoLogin = () => {
                 userStore.SetIsLoading(true)
                 await UserService.refreshToken()
                 const [ok, data] = await UserService.me()
-
                 if (!ok) {
-                    window.location.href = "/login";
+                    userStore.SetIsLoading(false);
                     return;
                 }
                 userStore.SetIsAuth(true);
                 userStore.SetIsLoading(false);
-                return;
             } catch (e) {
                 console.log("error: ", e);
+                userStore.SetIsAuth(false);
                 userStore.SetIsLoading(false);
             }
         };

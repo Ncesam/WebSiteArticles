@@ -1,41 +1,51 @@
 version: "3.9"
 
 services:
-  # auth:
-  #   build:
-  #     dockerfile: deploy/auth/Dockerfile_Debug
-  #   ports:
-  #     - "40001:40000"
-  #   cap_add:
-  #     - SYS_PTRACE
-  #   security_opt:
-  #     - apparmor:unconfined
+  auth:
+    build:
+      dockerfile: deploy/auth/Dockerfile_Debug
+    volumes:
+      - ./backend:/app
+    environment:
+      - RUN_MODE=air
+      - CGO_ENABLED=0
+      - GO111MODULE=on
+    working_dir: /app
+    ports:
+      - "50001:50001"
 
-  # config:
-  #   build:
-  #     dockerfile: deploy/config/Dockerfile_Debug
-  #   ports:
-  #     - "40002:40000"
-  #   cap_add:
-  #     - SYS_PTRACE
-  #   security_opt:
-  #     - apparmor:unconfined
+  config:
+    build:
+      dockerfile: deploy/config/Dockerfile_Debug
+    volumes:
+      - ./backend:/app
+    environment:
+      - RUN_MODE=air
+      - CGO_ENABLED=0
+      - GO111MODULE=on
+    working_dir: /app
+    ports:
+      - "50002:50002"
 
-  # queue:
-  #   build:
-  #     dockerfile: deploy/queue/Dockerfile_Debug
-  #   ports:
-  #     - "40003:40000"
-  #   cap_add:
-  #     - SYS_PTRACE
-  #   security_opt:
-  #     - apparmor:unconfined
+  queue:
+    build:
+      dockerfile: deploy/queue/Dockerfile_Debug
+    volumes:
+      - ./backend:/app
+    environment:
+      - RUN_MODE=air
+      - CGO_ENABLED=0
+      - GO111MODULE=on
+    working_dir: /app
+    ports:
+      - "50003:50003"
 
   request:
     build:
       dockerfile: deploy/request/Dockerfile_Debug
     ports:
       - "40004:40000"
+      - "50004:50004"
     volumes:
       - ./backend:/app
     environment:
@@ -44,12 +54,25 @@ services:
       - GO111MODULE=on
     working_dir: /app
 
-  # gateway:
-  #   build:
-  #     dockerfile: deploy/gateway/Dockerfile_Debug
-  #   ports:
-  #     - "40005:40000"
-  #   cap_add:
-  #     - SYS_PTRACE
-  #   security_opt:
-  #     - apparmor:unconfined
+  gateway:
+    build:
+      dockerfile: deploy/gateway/Dockerfile_Debug
+    volumes:
+      - ./backend:/app
+    environment:
+      - RUN_MODE=air
+      - CGO_ENABLED=0
+      - GO111MODULE=on
+    working_dir: /app
+
+  frontend:
+    build:
+      dockerfile: Dockerfile.debug
+    volumes:
+      - ./frontend:/app
+    working_dir: /app
+    ports:
+      - "3000:3000"
+  mongo:
+    ports:
+      - "27017:27017"

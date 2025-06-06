@@ -13,7 +13,7 @@ class userStore {
         makeAutoObservable(this);
     }
     SetIsLoading(value: boolean) {
-        this.isLoading=value;
+        this.isLoading = value;
     }
     
     SetIsAuth(value: boolean) {
@@ -24,6 +24,15 @@ class userStore {
     }
     SetConfigs(configs: BotConfig[]) {
         this.Configs = configs;
+    }
+    clear() {
+        this.logout();
+    }
+    logout() {
+        this.Configs = undefined;
+        this.IsAuth = false;
+        this.User = undefined;
+        this.isLoading = false;
     }
 }
 

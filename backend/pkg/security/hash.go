@@ -1,13 +1,12 @@
 package security
 
 import (
-	"backend/pkg/config"
-	"backend/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
+
+	"backend/pkg/errors"
 )
 
-func CompareHashAndPassword(password string, hashPassword string, cfg *config.Config) error {
-	// Проверяем, не пустые ли пароли
+func CompareHashAndPassword(password string, hashPassword string) error {
 	if password == "" || hashPassword == "" {
 		return errors.ErrInvalidCredentials
 	}

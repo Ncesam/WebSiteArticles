@@ -1,22 +1,23 @@
 package main
 
 import (
+	"fmt"
+	"log"
+	"time"
+
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+
 	_ "backend/docs"
 	"backend/internal/gateway"
 	"backend/pkg/config"
 	"backend/pkg/logger"
 	jwt "backend/pkg/security/JWT"
 	"backend/pkg/validator"
-	"fmt"
-	"log"
-	"time"
-
-	"github.com/gin-gonic/gin"
-	"github.com/gin-contrib/cors"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 )
 
 // @title           Backend Gateway API
@@ -50,11 +51,13 @@ func main() {
 	validator.RegisterMyHandlers(loggerInstanse)
 
 	app := gin.New()
-	app.GET("/swagger/*any",ginSwagger.WrapHandler(swaggerFiles.Handler))
+	app.MaxMultipartMemory = 100
 
-	app.Use(logger.MiddleWare(loggerInstanse, 30, time.Minute))
+	app.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	app.Use(logger.MiddleWare(loggerInstanse, 120, time.Minute))
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://frontend"},
+		AllowOrigins:     []string{"http://frontend", "http://localhost:3000"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},

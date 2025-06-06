@@ -11,6 +11,7 @@ RUN apk update && apk add --no-cache \
 # Установка Go-плагинов для protobuf
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+RUN go install github.com/air-verse/air@latest
 RUN go install github.com/go-delve/delve/cmd/dlv@latest
 
 # Работаем в директории приложения
@@ -20,17 +21,10 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 
-
 # Копируем остальное
 COPY . .
 
 # Генерация protobuf
 RUN make proto
 
-# Сборка
-RUN go build -gcflags="all=-N -l" -o ./queue_service ./cmd/queue/main.go
-
-
-EXPOSE 40000
-
-CMD ["dlv", "exec", "/app/queue_service", "--headless", "--listen=:40000", "--api-version=2", "--accept-multiclient", "--only-same-user=false"]
+CMD ["air", "-c", "deploy/queue/air.toml"]

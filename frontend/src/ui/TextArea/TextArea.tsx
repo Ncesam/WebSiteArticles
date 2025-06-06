@@ -13,7 +13,7 @@ const TextArea: FC<TextAreaProps> = ({
 }) => {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     return (
-        <div className="h-full flex flex-col w-full gap-1">
+        <div className="h-5/6 flex flex-col w-full gap-1">
             <div
                 className={clsx(
                     "px-4 py-2 w-full h-5/6 rounded-xl transition-all duration-300 ease-in-out",

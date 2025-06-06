@@ -1,58 +1,61 @@
-import type { FC } from "react";
-import React, { useState } from "react";
+import { FC, useState } from "react";
+import { useNavigate } from "react-router-dom";
+
 import { LoginProps } from "./Login.props";
-import { AxiosResponse } from "axios";
 import Input from "@/ui/Input/Input";
 import { InputStyleType } from "@/ui/Input/Input.props";
 import Button from "@/ui/Button/Button";
 import { ButtonStyleType } from "@/ui/Button/Button.props";
+
 import { UserService } from "@/http/User";
-import { useNavigate } from "react-router-dom";
-import { PANEL_ROUTE } from "@/utils/consts";
 import { useStore } from "@/hooks/store";
 import { IUser } from "@/types/user";
+import { PANEL_ROUTE } from "@/utils/consts";
 
-const Login: FC<LoginProps> = ({ }) => {
-    const [errors, setErrors] = useState<{ nickname?: string; password?: string }>({});
-    const {userStore} = useStore();
-    const [nickname, setNickname] = useState<string>("");
-    const [password, setPassword] = useState<string>("");
-    const navigate = useNavigate();
-    const validate = (data: any) => {
-        const fieldErrors: { nickname?: string, password?: string } = {};
-        switch (data.message) {
-            case "Password is invalid":
-                fieldErrors["password"] = "Пароль неправильный";
-                setErrors(fieldErrors);
-                return false;
-            case "User not found":
-                fieldErrors["nickname"] = "Пользователь не найден";
-                setErrors(fieldErrors);
-                return false;
-            default:
-                setErrors({});
-                return true;
-        }
-    };
-    const login = async () => {
-        const [ok, data] = await UserService.login(nickname, password)
-        if (!ok) {
-            validate(data)
-            return
-        }
-        userStore.SetIsAuth(true)
-        const user: IUser = {
-            email:  data?.email,
-            nickname: nickname,
-            password: password
-        }
-        userStore.SetUser(user);
-        navigate(PANEL_ROUTE);
-        console.log(userStore);
+const Login: FC<LoginProps> = () => {
+  const { userStore } = useStore();
+  const navigate = useNavigate();
+
+  const [nickname, setNickname] = useState("");
+  const [password, setPassword] = useState("");
+  const [errors, setErrors] = useState<{ nickname?: string; password?: string }>({});
+
+  const validate = (message: string): boolean => {
+    const fieldErrors: { nickname?: string; password?: string } = {};
+
+    if (message === "Password is invalid") {
+      fieldErrors.password = "Неверный пароль";
+    } else if (message === "User not found") {
+      fieldErrors.nickname = "Пользователь не найден";
     }
-    return (
-        <div className={"flex-1 flex h-screen items-center justify-center"}>
-            <div className={"flex flex-col items-center gap-2"}>
+
+    setErrors(fieldErrors);
+    return Object.keys(fieldErrors).length === 0;
+  };
+
+  const handleLogin = async () => {
+    const [ok, data] = await UserService.login(nickname, password);
+    console.log(data)
+    if (!ok) {
+      validate(data.message);
+      return;
+    }
+
+    userStore.SetIsAuth(true);
+
+    const user: IUser = {
+      email: data.email,
+      nickname,
+      password,
+    };
+
+    userStore.SetUser(user);
+    navigate(PANEL_ROUTE);
+  };
+
+     return (
+        <div className={"flex-1 flex w-screen h-screen items-center justify-center"}>
+            <div className={"w-1/6 flex flex-col items-center justify-center gap-2"}>
                 <div>
                     <h1 className={"text-2xl font-semibold text-base-darkBlue tracking-tight leading-snug"}>
                         Вход
@@ -60,8 +63,8 @@ const Login: FC<LoginProps> = ({ }) => {
                 </div>
                 <Input style={InputStyleType.login} helperText={errors.nickname} onChange={(e) => setNickname(e.target.value)} error={errors.nickname ? true : undefined} placeholder={"Логин"} />
                 <Input style={InputStyleType.login} helperText={errors.password} onChange={(e) => setPassword(e.target.value)} error={errors.password ? true : undefined} placeholder={"Пароль"} />
-                <div className={"flex items-center justify-between gap-2"}>
-                    <Button styleType={ButtonStyleType.submit} onClick={login}>Войти</Button>
+                <div className={"w-full flex justify-center"}>
+                    <Button styleType={ButtonStyleType.submit} onClick={handleLogin}>Войти</Button>
                 </div>
             </div>
         </div>
@@ -69,4 +72,3 @@ const Login: FC<LoginProps> = ({ }) => {
 };
 
 export default Login;
-

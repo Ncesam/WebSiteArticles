@@ -1,7 +1,7 @@
 
 export interface BotConfig {
+    Id: string,
     name: string,
-    id: string,
     userId: number,
     prompt: string,
     delay: number,
@@ -16,9 +16,9 @@ export interface FormBotConfig {
 }
 
 export interface StartConfig {
-    configId: number,
+    configId: string,
     userId: number,
     prompt: string,
-    data: string,
+    data: File,
 }
 
