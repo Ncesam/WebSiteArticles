@@ -18,5 +18,3 @@ type UpdateFormUser struct {
 	Nickname string `json:"nickname" binding:"required"`
 	Password string `json:"password" binding:"password_strength, required"`
 }
-
-

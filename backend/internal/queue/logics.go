@@ -176,15 +176,6 @@ func (l *QueueLogics) processItem(idx int, data map[string]interface{}, config *
 		return fmt.Errorf("image url not found")
 	}
 
-	fileDTF, err := l.uploadImage(urlImage, request.WebSite_DTF)
-	if err != nil {
-		return fmt.Errorf("upload image DTF: %w", err)
-	}
-	fileVC, err := l.uploadImage(urlImage, request.WebSite_VC_RU)
-	if err != nil {
-		return fmt.Errorf("upload image VC: %w", err)
-	}
-
 	generated, err := l.requestClient.Service.GenerateText(l.ctx, &request.GenerateTextRequest{
 		Prompt: prompt, Link: link.ShortURI,
 	})
@@ -192,11 +183,25 @@ func (l *QueueLogics) processItem(idx int, data map[string]interface{}, config *
 		return fmt.Errorf("generate text: %w", err)
 	}
 
-	if err := l.sendArticle(generated, fileVC, request.WebSite_VC_RU, config.Id); err != nil {
-		return err
-	}
-	if err := l.sendArticle(generated, fileDTF, request.WebSite_DTF, config.Id); err != nil {
-		return err
+	switch config.WebSite {
+	case configPb.WebSite_DTF:
+		fileDTF, err := l.uploadImage(urlImage, request.WebSite_DTF)
+		if err != nil {
+			return fmt.Errorf("upload image DTF: %w", err)
+		}
+
+		if err := l.sendArticle(generated, fileDTF, request.WebSite_DTF, config.Id); err != nil {
+			return err
+		}
+	case configPb.WebSite_VC_RU:
+		fileVC, err := l.uploadImage(urlImage, request.WebSite_VC_RU)
+		if err != nil {
+			return fmt.Errorf("upload image VC: %w", err)
+		}
+
+		if err := l.sendArticle(generated, fileVC, request.WebSite_VC_RU, config.Id); err != nil {
+			return err
+		}
 	}
 
 	l.logger.Info("Article sent", zap.Int("item_index", idx))
@@ -244,8 +249,8 @@ func (l *QueueLogics) sendArticle(text *request.Text, file *request.UploadMediaR
 	})
 	return err
 }
-func (l *QueueLogics) sleepWithContext(hours int32) bool {
-	delay := time.Duration(hours) * time.Hour
+func (l *QueueLogics) sleepWithContext(minute int32) bool {
+	delay := time.Duration(minute) * time.Minute
 	l.logger.Debug("Sleeping before next item", zap.Duration("delay", delay))
 	select {
 	case <-time.After(delay):

@@ -9,6 +9,7 @@ import (
 	configPb "backend/generated/proto/config"
 	"backend/internal/database/mongo"
 	"backend/pkg/config"
+	"backend/pkg/types"
 )
 
 type ConfigServer struct {
@@ -31,13 +32,24 @@ func NewConfigServer(logger *zap.Logger, cfg *config.Config, db *mongo.MongoData
 
 func (s *ConfigServer) AddConfig(ctx context.Context, req *configPb.AddConfigRequest) (*configPb.Config, error) {
 	s.logger.Debug("Got config data", zap.Int64("user id", req.UserId))
+
+	var website types.WebSite
+
+	switch req.Website {
+	case configPb.WebSite_DTF:
+		website = types.DTF
+	default:
+		website = types.VC_RU
+	}
 	doc := &mongo.Config{
-		UserId:   req.UserId,
-		Name:     req.Name,
-		Prompt:   req.Prompt,
-		Email:    req.Email,
-		Password: req.Password,
-		Delay:    req.Delay,
+		UserId:      req.UserId,
+		Name:        req.Name,
+		Prompt:      req.Prompt,
+		Email:       req.Email,
+		Password:    req.Password,
+		Delay:       req.Delay,
+		WebSite:     website,
+		IsPublished: req.IsPublished,
 	}
 
 	err := s.db.AddConfig(doc)
@@ -47,13 +59,15 @@ func (s *ConfigServer) AddConfig(ctx context.Context, req *configPb.AddConfigReq
 	}
 	s.logger.Debug("Config added", zap.Any("config id", doc.Id))
 	result := &configPb.Config{
-		Id:       doc.Id.Hex(),
-		UserId:   doc.UserId,
-		Name:     doc.Name,
-		Prompt:   doc.Prompt,
-		Email:    doc.Email,
-		Password: doc.Password,
-		Delay:    doc.Delay,
+		Id:          doc.Id.Hex(),
+		UserId:      doc.UserId,
+		Name:        doc.Name,
+		Prompt:      doc.Prompt,
+		Email:       doc.Email,
+		Password:    doc.Password,
+		Delay:       doc.Delay,
+		WebSite:     req.Website,
+		IsPublished: doc.IsPublished,
 	}
 	return result, nil
 }
@@ -68,14 +82,23 @@ func (s *ConfigServer) GetConfigs(ctx context.Context, req *configPb.GetConfigsR
 	s.logger.Debug("Got user configs", zap.Int64("user id", req.UserId))
 	var result []*configPb.Config
 	for _, config := range configs {
+		var website configPb.WebSite
+		switch config.WebSite {
+		case types.DTF:
+			website = configPb.WebSite_DTF
+		case types.VC_RU:
+			website = configPb.WebSite_VC_RU
+		}
 		config := &configPb.Config{
-			Id:       config.Id.Hex(),
-			UserId:   config.UserId,
-			Name:     config.Name,
-			Prompt:   config.Prompt,
-			Email:    config.Email,
-			Password: config.Password,
-			Delay:    config.Delay,
+			Id:          config.Id.Hex(),
+			UserId:      config.UserId,
+			Name:        config.Name,
+			Prompt:      config.Prompt,
+			Email:       config.Email,
+			Password:    config.Password,
+			Delay:       config.Delay,
+			WebSite:     website,
+			IsPublished: config.IsPublished,
 		}
 
 		result = append(result, config)
@@ -103,6 +126,15 @@ func (s *ConfigServer) GetConfig(ctx context.Context, req *configPb.GetConfigReq
 		return nil, err
 	}
 	s.logger.Debug("Got config", zap.String("config", config.Id.Hex()))
+
+	var website configPb.WebSite
+	switch config.WebSite {
+	case types.DTF:
+		website = configPb.WebSite_DTF
+	case types.VC_RU:
+		website = configPb.WebSite_VC_RU
+	}
+
 	result := &configPb.Config{
 		Id:              config.Id.Hex(),
 		UserId:          config.UserId,
@@ -113,6 +145,8 @@ func (s *ConfigServer) GetConfig(ctx context.Context, req *configPb.GetConfigReq
 		Delay:           config.Delay,
 		RefreshTokenDTF: config.RefreshTokenDTF,
 		RefreshTokenVC:  config.RefreshTokenVC,
+		WebSite:         website,
+		IsPublished:     config.IsPublished,
 	}
 
 	return result, nil

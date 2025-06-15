@@ -8,7 +8,7 @@ import (
 )
 
 type MapClients struct {
-	Auth  *grpcfactory.Client[authPb.AuthServiceClient]
-	Queue *grpcfactory.Client[queuePb.QueueServiceClient]
-	Config  *grpcfactory.Client[configPb.ConfigServiceClient]
+	Auth   *grpcfactory.Client[authPb.AuthServiceClient]
+	Queue  *grpcfactory.Client[queuePb.QueueServiceClient]
+	Config *grpcfactory.Client[configPb.ConfigServiceClient]
 }

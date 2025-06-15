@@ -11,7 +11,9 @@ import Input from "@/ui/Input/Input";
 import { InputStyleType, InputType } from "@/ui/Input/Input.props";
 import TextArea from "@/ui/TextArea/TextArea";
 
-import { PANEL_ROUTE } from "@/utils/consts";
+import { PANEL_ROUTE, WebSites } from "@/utils/consts";
+import BoolInput from "@/ui/BoolInput/BoolInput";
+import SelectMenu from "@/ui/SelectMenu/SelectMenu";
 
 const AddConfig: FC = () => {
   const [name, setName] = useState<string>("");
@@ -19,7 +21,8 @@ const AddConfig: FC = () => {
   const [delay, setDelay] = useState<number>(10);
   const [emailAccount, setEmailAccount] = useState<string>("");
   const [passwordAccount, setPasswordAccount] = useState<string>("");
-
+  const [isPublished, setIsPublished] = useState<boolean>(false);
+  const [webSite, setWebSite] = useState<string>(WebSites[-1].value);
   const navigate = useNavigate();
 
   const handleCreate = async () => {
@@ -29,6 +32,8 @@ const AddConfig: FC = () => {
       delay,
       email: emailAccount,
       password: passwordAccount,
+      isPublished: isPublished,
+      website: webSite
     };
 
     const [ok, data] = await ConfigService.addConfig(config);
@@ -56,11 +61,10 @@ const AddConfig: FC = () => {
               style={InputStyleType.login}
               type={InputType.text}
               placeholder="Время между постами"
-              helperText="В часах"
-              value={delay}
+              helperText="В минутах"
               onChange={(e) => setDelay(Number(e.target.value))}
             />
-
+            <SelectMenu options={WebSites} onChange={(value) => setWebSite(value)}/>
             <Input
               style={InputStyleType.login}
               placeholder="Email"
@@ -75,7 +79,7 @@ const AddConfig: FC = () => {
               value={passwordAccount}
               onChange={(e) => setPasswordAccount(e.target.value)}
             />
-
+            <BoolInput onChange={(e) => setIsPublished(!e)} value={isPublished} helperText="Публиковать?"/>
             <Button styleType={ButtonStyleType.submit} onClick={handleCreate}>
               Создать
             </Button>

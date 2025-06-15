@@ -72,7 +72,7 @@ func (s *RequestServer) SendArticle(ctx context.Context, req *requestPb.SendArti
 func (s *RequestServer) sendToSite(ctx context.Context, req *requestPb.SendArticleRequest, baseURL string) (*requestPb.Empty, error) {
 	s.logger.Info("Sending article", zap.Any("website", req.WebSite), zap.String("title", req.Entry.Title))
 
-	token, err := s.fetchToken(ctx, req.ConfigId, baseURL)
+	token, isPublished, err := s.fetchTokenAndIsPublished(ctx, req.ConfigId, baseURL)
 	if err != nil {
 		s.logger.Error("Failed to fetch token", zap.Error(err), zap.String("config_id", req.ConfigId), zap.Any("website", req.WebSite))
 		return nil, err
@@ -85,15 +85,15 @@ func (s *RequestServer) sendToSite(ctx context.Context, req *requestPb.SendArtic
 	}
 
 	s.logger.Info("Successfully fetched subsite ID", zap.Int64("subsite_id", subsiteID))
-	return s.postEntry(ctx, token, subsiteID, req.Entry, baseURL)
+	return s.postEntry(ctx, token, subsiteID, req.Entry, baseURL, isPublished)
 }
-func (s *RequestServer) fetchToken(ctx context.Context, configID string, baseURL string) (string, error) {
+func (s *RequestServer) fetchTokenAndIsPublished(ctx context.Context, configID string, baseURL string) (string, bool, error) {
 	s.logger.Info("Fetching token", zap.String("config_id", configID), zap.String("base_url", baseURL))
 
 	cfg, err := s.configClient.Service.GetConfig(ctx, &configPb.GetConfigRequest{ConfigId: configID})
 	if err != nil {
 		s.logger.Error("GetConfig failed", zap.Error(err), zap.String("config_id", configID))
-		return "", err
+		return "", false, err
 	}
 
 	buf := &bytes.Buffer{}
@@ -115,7 +115,7 @@ func (s *RequestServer) fetchToken(ctx context.Context, configID string, baseURL
 	resp, err := s.api.Do(httpReq)
 	if err != nil {
 		s.logger.Error("Token request failed", zap.Error(err), zap.String("config_id", configID), zap.String("base_url", baseURL))
-		return "", err
+		return "", false, err
 	}
 	defer resp.Body.Close()
 
@@ -127,15 +127,15 @@ func (s *RequestServer) fetchToken(ctx context.Context, configID string, baseURL
 	body, _ := io.ReadAll(resp.Body)
 	if err := json.Unmarshal(body, &out); err != nil {
 		s.logger.Error("Failed to parse token response", zap.Error(err), zap.String("config_id", configID), zap.String("base_url", baseURL))
-		return "", errors.ErrInternalServer
+		return "", false, errors.ErrInternalServer
 	}
 	if resp.StatusCode != http.StatusOK {
 		s.logger.Error("Status code isn't OK", zap.String("body", string(body)))
-		return "", errors.ErrInternalServer
+		return "", false, errors.ErrInternalServer
 	}
 	s.logger.Debug(string(body))
 	s.logger.Info("Successfully fetched token", zap.String("access_token", out.Data.AccessToken))
-	return out.Data.AccessToken, nil
+	return out.Data.AccessToken, cfg.IsPublished, nil
 }
 func (s *RequestServer) fetchSubsite(ctx context.Context, accessToken, baseURL string) (int64, error) {
 	endpoint := fmt.Sprintf("%s/v2.1/subsite/me", baseURL)
@@ -181,7 +181,7 @@ func (s *RequestServer) fetchSubsite(ctx context.Context, accessToken, baseURL s
 	s.logger.Info("Successfully fetched subsite ID", zap.Int64("subsite_id", out.Result.ID))
 	return out.Result.ID, nil
 }
-func (s *RequestServer) createEntry(ctx context.Context, subsiteID int64, entry *requestPb.EntryRequest) (*types.EntryRequest, error) {
+func (s *RequestServer) createEntry(ctx context.Context, subsiteID int64, entry *requestPb.EntryRequest, isPublished bool) (*types.EntryRequest, error) {
 	s.logger.Debug("Creating entry", zap.Int64("subsite_id", subsiteID))
 	protoMarshal := protojson.MarshalOptions{
 		EmitUnpopulated: true,
@@ -207,12 +207,13 @@ func (s *RequestServer) createEntry(ctx context.Context, subsiteID int64, entry 
 	entryMap.IsEnabledComments = true
 	entryMap.IsEnabledLikes = true
 	entryMap.IsEnabledAd = true
+	entryMap.IsPublished = isPublished
 
 	return &entryMap, nil
 }
-func (s *RequestServer) postEntry(ctx context.Context, accessToken string, subsiteID int64, entry *requestPb.EntryRequest, baseURL string) (*requestPb.Empty, error) {
+func (s *RequestServer) postEntry(ctx context.Context, accessToken string, subsiteID int64, entry *requestPb.EntryRequest, baseURL string, isPublished bool) (*requestPb.Empty, error) {
 	s.logger.Debug("Posting entry", zap.Int64("subsite_id", subsiteID), zap.String("base_url", baseURL), zap.String("entry_title", entry.Title))
-	entryMap, err := s.createEntry(ctx, subsiteID, entry)
+	entryMap, err := s.createEntry(ctx, subsiteID, entry, isPublished)
 	if err != nil {
 		s.logger.Error("Error to create entry", zap.Error(err))
 		return nil, err

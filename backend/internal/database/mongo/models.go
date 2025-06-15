@@ -1,6 +1,10 @@
 package mongo
 
-import "go.mongodb.org/mongo-driver/v2/bson"
+import (
+	"backend/pkg/types"
+
+	"go.mongodb.org/mongo-driver/v2/bson"
+)
 
 
 
@@ -14,5 +18,7 @@ type Config struct {
 	Email        string `bson:"email"`
 	Password     string `bson:"password"`
 	Delay        int64  `bson:"delay"`
+	WebSite 	types.WebSite `bson:"WebSite"`
+	IsPublished bool `bson:"is_published"`
 }
 

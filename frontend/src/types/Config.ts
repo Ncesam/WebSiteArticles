@@ -12,7 +12,9 @@ export interface FormBotConfig {
     prompt: string,
     delay: number
     email: string,
-    password: string,
+    password: string, 
+    website: string,
+    isPublished: boolean,
 }
 
 export interface StartConfig {

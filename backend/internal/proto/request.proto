@@ -11,8 +11,8 @@ enum WebSite {
 }
 message sendArticleRequest {
   WebSite WebSite = 1;
-  EntryRequest Entry = 3;
-  string configId = 4;
+  EntryRequest Entry = 2;
+  string ConfigId = 3;
 }
 message EntryRequest {
   int64 id = 1;

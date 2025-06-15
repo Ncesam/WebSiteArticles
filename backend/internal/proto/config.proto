@@ -5,15 +5,20 @@ package config;
 
 option go_package = "generated/proto/config;configPb";
 
+enum WebSite {
+    DTF = 0;
+    VC_RU = 1;
+}
+
 message addConfigRequest {
     string name = 1;
     int64 userId = 2;
     string prompt = 3;
-    string refreshTokenDTF = 4;
-    int64 delay = 5;
-    string email = 6;
-    string password = 7;
-    string refreshTokenVC = 8;
+    int64 delay = 4;
+    string email = 5;
+    string password = 6;
+    WebSite website = 7;
+    bool isPublished = 8;
 }
 
 message Config {
@@ -26,6 +31,8 @@ message Config {
     string password = 7;
     int64 delay = 8;
     string refreshTokenVC = 9;
+    WebSite webSite = 10;
+    bool isPublished = 11;
 }
 
 message getConfigsRequest{
